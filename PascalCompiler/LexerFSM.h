@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include <tuple>
+#include "LexemType.h"
 
 class StateNode;
 
@@ -14,34 +15,38 @@ using TupleVector = std::vector<std::tuple<char, char>>;
 using TupleVectorPtr = std::unique_ptr<TupleVector>;
 using StateCodesVector = std::vector<TupleVectorPtr>;
 
-enum StateType {
-	Start = 0, // < | : | > | ; | , | ^ | [ | ] | { | } | / | + | - | . | ( | * | ) | a-z | A-Z | _ | ' | 0-9
-	State0 = 1, // V
-	State1 = 2, // . | V
-	State2 = 3, // * | V
-	State3 = 4, // ) | V
-	State4 = 5, // a-z | A-Z | _ | V
-	State5 = 6, // 0-9 | . | V
-	State6 = 7, // 0-9 | V
-	State7 = 8, // !(\, ') | \ | '
-	State8 = 9, // V
-	State9 = 10, // = | V
-	State10 = 11, // > | = | V
+enum class StateType {
+	Error = -2,
+	Terminal = -1,
+	Start = 0, 
+	State0 = 1, 
+	State1 = 2, 
+	State2 = 3, 
+	State3 = 4, 
+	State4 = 5, 
+	State5 = 6, 
+	State6 = 7, 
+	State7 = 8, 
+	State8 = 9, 
+	State9 = 10, 
+	State10 = 11,
 	State11 = 12,
 	State12 = 13,
-	Terminal = -1,
-	Error = -2
+	State13 = 14,
+	State14 = 15,
+	State15 = 16
 };
 
 class StateNode {
 	public:
-		StateType state;
+		const StateType state;
+		const LexemType type;
 
 		std::vector<StateNodeWeak> nextStates;
 		StateCodesVector nextStateCodes;
 
 
-		StateNode(StateType state);
+		StateNode(StateType state, LexemType type);
 };
 
 class LexerFSM {

@@ -3,19 +3,24 @@
 #include <string>
 #include <fstream>
 #include <memory>
+#include "LexemType.h"
 #include "Position.h"
 #include "LexerFSM.h"
 
 class Lexem;
+class IO;
 
 using LexemPtr = std::unique_ptr<Lexem>;
+using PositionPtr = std::unique_ptr<Position>;
+using IOPtr = std::unique_ptr<IO>;
 
 class Lexem {
 	public:
 		const std::string word;
-		const Position pos;
+		PositionPtr pos;
+		const LexemType type;
 
-		Lexem(std::string, Position pos);
+		Lexem(std::string, PositionPtr pos, LexemType type);
 };
 
 class IO {

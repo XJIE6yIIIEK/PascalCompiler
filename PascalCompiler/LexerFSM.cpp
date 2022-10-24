@@ -1,21 +1,24 @@
 #include "LexerFSM.h"
 
-StateNode::StateNode(StateType state) : state(state) {}
+StateNode::StateNode(StateType state, LexemType type = LexemType::Null) : state(state), type(type) {}
 
 LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start)), terminalState(std::make_shared<StateNode>(StateType::Terminal)) {
 	StateNodePtr state0 = std::make_shared<StateNode>(StateType::State0);
 	StateNodePtr state1 = std::make_shared<StateNode>(StateType::State1);
 	StateNodePtr state2 = std::make_shared<StateNode>(StateType::State2);
-	StateNodePtr state3 = std::make_shared<StateNode>(StateType::State3);
-	StateNodePtr state4 = std::make_shared<StateNode>(StateType::State4);
-	StateNodePtr state5 = std::make_shared<StateNode>(StateType::State5);
-	StateNodePtr state6 = std::make_shared<StateNode>(StateType::State6);
-	StateNodePtr state7 = std::make_shared<StateNode>(StateType::State7);
+	StateNodePtr state3 = std::make_shared<StateNode>(StateType::State3, LexemType::Commentary);
+	StateNodePtr state4 = std::make_shared<StateNode>(StateType::State4, LexemType::KeywordOrIdent);
+	StateNodePtr state5 = std::make_shared<StateNode>(StateType::State5, LexemType::Integer);
+	StateNodePtr state6 = std::make_shared<StateNode>(StateType::State6, LexemType::Float);
+	StateNodePtr state7 = std::make_shared<StateNode>(StateType::State7, LexemType::Text);
 	StateNodePtr state8 = std::make_shared<StateNode>(StateType::State8);
 	StateNodePtr state9 = std::make_shared<StateNode>(StateType::State9);
 	StateNodePtr state10 = std::make_shared<StateNode>(StateType::State10);
-	StateNodePtr state11 = std::make_shared<StateNode>(StateType::State11);
+	StateNodePtr state11 = std::make_shared<StateNode>(StateType::State11, LexemType::Commentary);
 	StateNodePtr state12 = std::make_shared<StateNode>(StateType::State12);
+	StateNodePtr state13 = std::make_shared<StateNode>(StateType::State13, LexemType::Commentary);
+	StateNodePtr state14 = std::make_shared<StateNode>(StateType::State14, LexemType::Commentary);
+	StateNodePtr state15 = std::make_shared<StateNode>(StateType::State15, LexemType::Text);
 
 	statesVector.push_back(state0);
 	statesVector.push_back(state1);
@@ -30,6 +33,9 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	statesVector.push_back(state10);
 	statesVector.push_back(state11);
 	statesVector.push_back(state12);
+	statesVector.push_back(state13);
+	statesVector.push_back(state14);
+	statesVector.push_back(state15);
 
 	//START INITIALIZING
 	TupleVectorPtr state_Start_1 = std::make_unique<TupleVector>(TupleVector({
@@ -41,11 +47,6 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 		std::make_tuple('(', '(')
 	}));
 	AddTransition(startState, state2, std::move(state_Start_2));
-
-	TupleVectorPtr state_Start_3 = std::make_unique<TupleVector>(TupleVector({
-		std::make_tuple('*', '*')
-	}));
-	AddTransition(startState, state3, std::move(state_Start_3));
 
 	TupleVectorPtr state_Start_4 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple('a', 'z'),
@@ -59,10 +60,10 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	}));
 	AddTransition(startState, state5, std::move(state_Start_5));
 
-	TupleVectorPtr state_Start_11 = std::make_unique<TupleVector>(TupleVector({
+	TupleVectorPtr state_Start_12 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple('\'', '\'')
 	}));
-	AddTransition(startState, state11, std::move(state_Start_11));
+	AddTransition(startState, state12, std::move(state_Start_12));
 
 	TupleVectorPtr state_Start_0 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple(';', ';'),
@@ -76,7 +77,8 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 		std::make_tuple('+', '+'),
 		std::make_tuple('-', '-'),
 		std::make_tuple('=', '='),
-		std::make_tuple(')', ')')
+		std::make_tuple(')', ')'),
+		std::make_tuple('*', '*')
 	}));
 	AddTransition(startState, state0, std::move(state_Start_0));
 
@@ -103,23 +105,23 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	//STATE 1 COMPLETE
 
 	//STATE 2 INITIALIZING
-	TupleVectorPtr state_2_0 = std::make_unique<TupleVector>(TupleVector({
+	TupleVectorPtr state_2_13 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple('*', '*')
 	}));
-	AddTransition(state2, state0, std::move(state_2_0));
+	AddTransition(state2, state13, std::move(state_2_13));
 
 	TupleVectorPtr state_2_T = nullptr;
 	AddTransition(state2, terminalState, std::move(state_2_T));
 	//STATE 2 COMPLETE
 
 	//STATE 3 INITIALIZING
-	TupleVectorPtr state_3_0 = std::make_unique<TupleVector>(TupleVector({
-		std::make_tuple(')', ')')
+	TupleVectorPtr state_3_14 = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('*', '*')
 	}));
-	AddTransition(state3, state0, std::move(state_3_0));
+	AddTransition(state3, state14, std::move(state_3_14));
 
-	TupleVectorPtr state_3_T = nullptr;
-	AddTransition(state3, terminalState, std::move(state_3_T));
+	TupleVectorPtr state_3_3 = nullptr;
+	AddTransition(state3, state3, std::move(state_3_3));
 	//STATE 3 COMPLETE
 
 	//STATE 4 INITIALIZING
@@ -172,10 +174,10 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	}));
 	AddTransition(state7, state8, std::move(state_7_8));
 
-	TupleVectorPtr state_7_12 = std::make_unique<TupleVector>(TupleVector({
+	TupleVectorPtr state_7_15 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple('\'', '\''),
 	}));
-	AddTransition(state7, state12, std::move(state_7_12));
+	AddTransition(state7, state15, std::move(state_7_15));
 	//STATE 7 COMPLETE
 
 	//STATE 8 INITIALIZING
@@ -205,16 +207,35 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	//STATE 10 COMPLETE
 
 	//STATE 11 INITIALIZING
-	TupleVectorPtr state_11_7 = nullptr;
-	AddTransition(state11, state7, std::move(state_11_7));
+	TupleVectorPtr state_11_0 = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple(')', ')')
+	}));
+	AddTransition(state11, state0, std::move(state_11_0));
 	//STATE 11 COMPLETE
 
 	//STATE 12 INITIALIZING
-	TupleVectorPtr state_12_0 = std::make_unique<TupleVector>(TupleVector({
+	TupleVectorPtr state_12_7 = nullptr;
+	AddTransition(state12, state7, std::move(state_12_7));
+	//STATE 12 COMPLETE
+
+	//STATE 13 INITIALIZING
+	TupleVectorPtr state_13_3 = nullptr;
+	AddTransition(state13, state3, std::move(state_13_3));
+	//STATE 13 COMPLETE
+
+	//STATE 14 INITIALIZING
+	TupleVectorPtr state_14_11 = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('*', '*')
+	}));
+	AddTransition(state14, state11, std::move(state_14_11));
+	//STATE 14 COMPLETE
+
+	//STATE 14 INITIALIZING
+	TupleVectorPtr state_15_0 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple('\'', '\'')
 	}));
-	AddTransition(state12, state0, std::move(state_12_0));
-	//STATE 12 COMPLETE
+	AddTransition(state15, state0, std::move(state_15_0));
+	//STATE 14 COMPLETE
 
 	//STATE 0 INITIALIZING
 	TupleVectorPtr state_0_T = nullptr;

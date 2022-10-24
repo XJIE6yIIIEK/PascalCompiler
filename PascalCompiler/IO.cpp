@@ -1,6 +1,6 @@
 #include "IO.h"
 
-Lexem::Lexem(std::string word, Position pos) : word(word), pos(pos) { };
+Lexem::Lexem(std::string word, PositionPtr pos, LexemType type) : word(word), pos(std::move(pos)), type(type) { };
 
 IO::IO(char* path) : epPath(path), currentPosition(-1, 0), fsm(LexerFSM()), eof(false) {
 	inputStream.open(epPath);
@@ -25,8 +25,6 @@ bool IO::GetNextLine() {
 
 		currentPosition.row += 1;
 		currentPosition.col = 0;
-
-		//currentLine.erase(remove_if(currentLine.begin(), currentLine.end(), isspace), currentLine.end());
 	} while (currentLine.empty() && !inputStream.eof());
 
 	return false;
@@ -48,42 +46,53 @@ void IO::SkipSpaces() {
 
 LexemPtr IO::GetNextLexem() {
 	if (eof) {
-		return LexemPtr(nullptr);
+		return nullptr;
 	}
 
 	std::string lexem;
 	char currentChar = 0;
-	StateType prevState = fsm.currentState->state;
+	LexemType type = LexemType::Operator;
 	StateType curState = fsm.currentState->state;
 
-	SkipSpaces();
+	if (curState != StateType::State7 && curState != StateType::State3) {
+		SkipSpaces();
+	}
 
-	Position startPosition = currentPosition;
+	PositionPtr startPosition = std::make_unique<Position>(currentPosition.row, currentPosition.col);
 
-	while (!eof && ((curState >= StateType::Start && curState <= StateType::State10) || curState == StateType::State12)) {
+	while (!eof && ((curState >= StateType::Start && curState <= StateType::State11) || (curState >= StateType::State14 && curState <= StateType::State15))) {
+		bool eol = false;
 		currentChar = currentLine[currentPosition.col];
-		prevState = curState;
 		curState = fsm.NextState(currentChar);
 
-		if (curState >= StateType::State0 && curState <= StateType::State11) {
+		if (fsm.currentState->type > LexemType::Null) {
+			type = fsm.currentState->type;
+		}
+
+		if (curState >= StateType::State0 && curState <= StateType::State13) {
 			lexem += currentChar;
 			currentPosition.col++;
-		} else if (curState == StateType::State12) {
+		} else if (curState >= StateType::State14 && curState <= StateType::State15) {
 			break;
 		}
 
 		if (CheckEOL()) {
 			eof = GetNextLine();
+			eol = true;
+		}
+
+		if (!(curState == StateType::State7 || curState == StateType::State3) && eol) {
+			break;
+		} else if (eol) {
+			lexem += '\n';
 		}
 	}
 
-	if (!(curState == StateType::State11 || curState == StateType::State12)) {
+	if (!(curState >= StateType::State12 && curState <= StateType::State15)) {
 		fsm.Reset();
-	} else if (curState == StateType::State11) {
+	} else if (curState >= StateType::State12 && curState <= StateType::State13) {
 		fsm.NextState(0);
 	}
 
-	LexemPtr lexemObj = std::make_unique<Lexem>(lexem, startPosition);
-
-	return std::move(lexemObj);
+	return std::make_unique<Lexem>(lexem, std::move(startPosition), type);
 }
