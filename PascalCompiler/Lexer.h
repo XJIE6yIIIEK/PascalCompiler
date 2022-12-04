@@ -10,12 +10,6 @@ class Token;
 
 using TokenPtr = std::unique_ptr<Token>;
 
-enum class TokenType {
-	Keyword,
-	Ident,
-	Constant
-};
-
 enum class TokenConstType {
 	Integer,
 	Bool,
@@ -23,12 +17,18 @@ enum class TokenConstType {
 	String
 };
 
+enum class TokenTypeEnum {
+	Keyword,
+	Ident,
+	Constant
+};
+
 class Token {
 	public:
-		const TokenType type;
-		const PositionPtr pos;
+		const TokenTypeEnum type;
+		PositionPtr pos;
 
-		Token(TokenType type, PositionPtr pos);
+		Token(TokenTypeEnum type, PositionPtr pos);
 		virtual ~Token() = NULL;
 
 		virtual std::string to_string() = NULL;
@@ -38,7 +38,7 @@ class TokenKeywords : public Token {
 	public:
 		const KeywordsType kwType;
 
-		TokenKeywords(TokenType type, PositionPtr pos, KeywordsType kwType);
+		TokenKeywords(TokenTypeEnum type, PositionPtr pos, KeywordsType kwType);
 		~TokenKeywords();
 
 		virtual std::string to_string();
@@ -48,20 +48,29 @@ class TokenIdent : public Token {
 	public:
 		const std::string id;
 
-		TokenIdent(TokenType type, PositionPtr pos, std::string id);
+		TokenIdent(TokenTypeEnum type, PositionPtr pos, std::string id);
 		~TokenIdent();
 
 		virtual std::string to_string();
 };
 
-template<typename ConstType>
 class TokenConst : public Token {
 	public:
 		const TokenConstType constType;
+
+		TokenConst(TokenTypeEnum type, PositionPtr pos, TokenConstType constType);
+		virtual ~TokenConst() = NULL;
+
+		virtual std::string to_string() = NULL;
+};
+
+template<typename ConstType>
+class TokenTypeConst : public TokenConst {
+	public:
 		const ConstType val;
 
-		TokenConst(TokenType type, PositionPtr pos, TokenConstType constType, ConstType val);
-		~TokenConst();
+		TokenTypeConst(TokenTypeEnum type, PositionPtr pos, TokenConstType constType, ConstType val);
+		~TokenTypeConst();
 
 		virtual std::string to_string();
 };

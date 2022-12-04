@@ -147,8 +147,8 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	}));
 	AddTransition(state5, state6, std::move(state_5_6));
 
-	TupleVectorPtr state_5_0 = nullptr;
-	AddTransition(state5, state0, std::move(state_5_0));
+	TupleVectorPtr state_5_T = nullptr; // 5 - 0
+	AddTransition(state5, terminalState, std::move(state_5_T));
 	//STATE 5 COMPLETE
 
 	//STATE 6 INITIALIZING
@@ -157,8 +157,8 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	}));
 	AddTransition(state6, state6, std::move(state_6_6));
 
-	TupleVectorPtr state_6_0 = nullptr;
-	AddTransition(state6, state0, std::move(state_6_0));
+	TupleVectorPtr state_6_T = nullptr; // 6 - 0
+	AddTransition(state6, terminalState, std::move(state_6_T));
 	//STATE 6 COMPLETE
 
 	//STATE 7 INITIALIZING

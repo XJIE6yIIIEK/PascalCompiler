@@ -1,5 +1,10 @@
 #pragma once
 #include <string>
+#include <memory>
+
+class Position;
+
+using PositionPtr = std::unique_ptr<Position>;
 
 class Position {
 	public:

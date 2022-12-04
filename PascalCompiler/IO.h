@@ -11,7 +11,6 @@ class Lexem;
 class IO;
 
 using LexemPtr = std::unique_ptr<Lexem>;
-using PositionPtr = std::unique_ptr<Position>;
 using IOPtr = std::unique_ptr<IO>;
 
 class Lexem {
