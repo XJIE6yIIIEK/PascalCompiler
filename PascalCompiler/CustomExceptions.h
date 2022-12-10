@@ -11,15 +11,15 @@ class CustomException : public std::exception {
 		PositionPtr pos;
 
 	public:
-		CustomException(std::string& msg, PositionPtr pos);
+		CustomException(std::string msg, PositionPtr pos);
 
 		const char* what();
 };
 
 class UnexpectedToken : public CustomException {
 	private:
-		UnexpectedToken(std::string& tokens, PositionPtr pos);
+		UnexpectedToken(std::string tokens, PositionPtr pos);
 
 	public:
-		static UnexpectedToken CreateException(std::string& msg, PositionPtr pos);
+		static UnexpectedToken CreateException(std::string msg, PositionPtr pos);
 };

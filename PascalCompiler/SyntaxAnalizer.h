@@ -1,16 +1,28 @@
 #pragma once
 #include <memory>
+#include <stack>
 #include "Lexer.h"
 #include "Keywords.h"
+#include "Tables.h"
 
 class Syntax {
 	private:
 		std::unique_ptr<Tokenizer> tokenizer;
 		std::unique_ptr<Token> curToken;
 
+		std::stack<TableIdentPtr> tableStack;
+
+		
+		void InitializeIdentTable();
+		ITableTypeElementPtr GetTypeFromFictiveView(std::string ident, UsageEnum allowedUsage);
+		ITableTypeElementPtr GetTypeFromCurrentView(std::string ident, UsageEnum allowedUsage);
+		ITableTypeElementPtr GetTypeFromCurrentView(std::string ident, UsageEnumVector& allowedUsage);
+		std::string GetIdentOfCurrentToken();
+
 		bool Accept(KeywordsType kwType, bool next, bool throwErr);
 		bool Accept(TokenTypeEnum tokenType, bool next, bool throwErr);
 		bool Accept(TokenConstType constType, bool next, bool throwErr);
+		bool Accept(ITableTypeElementPtr type1, ITableTypeElementPtr type2);
 
 		void GetNext();
 		TokenKeywords* GetKeywordToken();
@@ -23,7 +35,8 @@ class Syntax {
 		void block();
 		void constBlock();
 		void constDeclaration();
-		void constant();
+		ITableTypeElementPtr constant();
+		ITableTypeElementPtr constantValue();
 		void varBlock();
 		void opBlock();
 		void typeBlock();
@@ -31,19 +44,29 @@ class Syntax {
 		void stringConst();
 		void similarVarSection();
 		void type();
+		void typeDefine();
+		ITableTypeElementPtr typeDeclaration();
+		ITableTypeElementPtr simpleTypeDeclaration();
+		ITableTypeElementPtr regularTypeDeclaration();
+		ITableTypeElementPtr componentType();
+		ITableTypeElementPtr enumType();
+		ITableTypeElementPtr intervalType();
+		ITableTypeElementPtr typeName();
 		void compositeOperator();
 		void operatorBlock();
 		void unmarkedOperator();
 		void simpleOperator();
 		void complexOperator();
 		void assingmentOperator();
-		void expression();
-		void simpleExpression();
-		void term();
-		void factor();
+		ITableTypeElementPtr expression();
+		ITableTypeElementPtr simpleExpression();
+		ITableTypeElementPtr term();
+		ITableTypeElementPtr factor();
 		void ifBlock();
 		void whileBlock();
-		void var();
+		ITableTypeElementPtr var();
+		ITableTypeElementPtr indexedVar();
+		ITableTypeElementPtr simleVar();
 
 		bool boolOpStart();
 		bool additiveOpStart();
@@ -51,6 +74,7 @@ class Syntax {
 		bool multiplicativeOpStart();
 		bool constantStart();
 		bool complexOperatorStart();
+		bool stringQuote();
 
 	public:
 		Syntax(std::unique_ptr<Tokenizer> tokenizer);

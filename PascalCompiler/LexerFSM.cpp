@@ -19,6 +19,9 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	StateNodePtr state13 = std::make_shared<StateNode>(StateType::State13, LexemType::Commentary);
 	StateNodePtr state14 = std::make_shared<StateNode>(StateType::State14, LexemType::Commentary);
 	StateNodePtr state15 = std::make_shared<StateNode>(StateType::State15, LexemType::Text);
+	StateNodePtr state16 = std::make_shared<StateNode>(StateType::State16);
+	StateNodePtr state17 = std::make_shared<StateNode>(StateType::State17, LexemType::KeywordOrIdent);
+	StateNodePtr state18 = std::make_shared<StateNode>(StateType::State18);
 
 	statesVector.push_back(state0);
 	statesVector.push_back(state1);
@@ -36,6 +39,9 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	statesVector.push_back(state13);
 	statesVector.push_back(state14);
 	statesVector.push_back(state15);
+	statesVector.push_back(state16);
+	statesVector.push_back(state17);
+	statesVector.push_back(state18);
 
 	//START INITIALIZING
 	TupleVectorPtr state_Start_1 = std::make_unique<TupleVector>(TupleVector({
@@ -142,10 +148,10 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	}));
 	AddTransition(state5, state5, std::move(state_5_5));
 
-	TupleVectorPtr state_5_6 = std::make_unique<TupleVector>(TupleVector({
+	TupleVectorPtr state_5_16 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple('.', '.'),
 	}));
-	AddTransition(state5, state6, std::move(state_5_6));
+	AddTransition(state5, state16, std::move(state_5_16));
 
 	TupleVectorPtr state_5_T = nullptr; // 5 - 0
 	AddTransition(state5, terminalState, std::move(state_5_T));
@@ -230,12 +236,36 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	AddTransition(state14, state11, std::move(state_14_11));
 	//STATE 14 COMPLETE
 
-	//STATE 14 INITIALIZING
+	//STATE 15 INITIALIZING
 	TupleVectorPtr state_15_0 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple('\'', '\'')
 	}));
 	AddTransition(state15, state0, std::move(state_15_0));
-	//STATE 14 COMPLETE
+	//STATE 15 COMPLETE
+
+	//STATE 16
+	TupleVectorPtr state_16_6 = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('0', '9')
+	}));
+	AddTransition(state16, state6, std::move(state_16_6));
+
+	TupleVectorPtr state_16_17 = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('.', '.'),
+	}));
+	AddTransition(state16, state17, std::move(state_16_17));
+	//STATE 16 COMPLETE
+
+	//STATE 17
+	TupleVectorPtr state_17_18 = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('.', '.')
+	}));
+	AddTransition(state17, state18, std::move(state_17_18));
+	//STATE 17 COMPLETE
+
+	//STATE 18
+	TupleVectorPtr state_18_T = nullptr;
+	AddTransition(state18, terminalState, std::move(state_18_T));
+	//STATE 18 COMPLETE
 
 	//STATE 0 INITIALIZING
 	TupleVectorPtr state_0_T = nullptr;
