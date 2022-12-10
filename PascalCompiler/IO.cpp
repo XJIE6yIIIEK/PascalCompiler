@@ -67,10 +67,13 @@ LexemPtr IO::GetNextLexem() {
 
 		if (fsm.currentState->type > LexemType::Null) {
 			type = fsm.currentState->type;
+		} else if ((int)(curState) < -1) {
+			fsm.ThrowError(std::move(startPosition));
 		}
 
 		if ((curState >= StateType::State0 && curState <= StateType::State13) || (curState >= StateType::State16 && curState <= StateType::State18)) {
-			if (curState == StateType::State16 && currentLine[currentPosition.col + 1] == '.') {
+			if (curState == StateType::State16 
+				&& (currentPosition.col + 1 == currentLine.size() || currentLine[currentPosition.col + 1] == '.')) {
 				break;
 			}
 

@@ -5,6 +5,7 @@
 #include <vector>
 #include <tuple>
 #include "LexemType.h"
+#include "Position.h"
 
 class StateNode;
 
@@ -16,7 +17,9 @@ using TupleVectorPtr = std::unique_ptr<TupleVector>;
 using StateCodesVector = std::vector<TupleVectorPtr>;
 
 enum class StateType {
-	Error = -2,
+	ErrorWrongNumber = -4,
+	ErrorWrongName = -3,
+	ErrorUnkwownSymbol = -2,
 	Terminal = -1,
 	Start = 0, 
 	State0 = 1, 
@@ -68,4 +71,6 @@ class LexerFSM {
 
 		StateType NextState(char ch);
 		void Reset();
+
+		void ThrowError(PositionPtr pos);
 };

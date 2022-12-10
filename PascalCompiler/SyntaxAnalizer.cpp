@@ -15,6 +15,13 @@ void Syntax::InitializeIdentTable() {
 	boolEnum->Add("false");
 	boolEnum->Add("true");
 
+	intType->AddCast(charType);
+	intType->AddCast(floatType);
+
+	floatType->AddCast(charType);
+
+	boolType->AddCast(charType);
+
 	TableIdentPtr fictiveTable = std::make_shared<TableIdent>();
 	tableStack.push(fictiveTable);
 
@@ -55,8 +62,7 @@ bool Syntax::Accept(KeywordsType kwType, bool next = true, bool throwErr = true)
 	TokenKeywords* token = GetKeywordToken();
 
 	if (token == nullptr) {
-
-		return false;
+		throw EndOfProgram::CreateException();
 	}
 
 	if (token->kwType == kwType) {
@@ -78,8 +84,7 @@ bool Syntax::Accept(KeywordsType kwType, bool next = true, bool throwErr = true)
 
 bool Syntax::Accept(TokenTypeEnum tokenType, bool next = true, bool throwErr = true) {
 	if (curToken == nullptr) {
-		//Добавить выкидывание ошибок
-		return false;
+		throw EndOfProgram::CreateException();
 	}
 
 	if (curToken->type == tokenType) {
@@ -103,8 +108,7 @@ bool Syntax::Accept(TokenConstType constType, bool next = true, bool throwErr = 
 	TokenConst* tokenConst = GetConstToken();
 
 	if (tokenConst == nullptr) {
-		//Добавить выкидывание ошибок
-		return false;
+		throw EndOfProgram::CreateException();
 	}
 
 	if (tokenConst->constType == constType) {
@@ -124,12 +128,16 @@ bool Syntax::Accept(TokenConstType constType, bool next = true, bool throwErr = 
 	}
 }
 
-bool Syntax::Accept(ITableTypeElementPtr type1, ITableTypeElementPtr type2) {
+ITableTypeElementPtr Syntax::AcceptTypes(ITableTypeElementPtr type1, ITableTypeElementPtr type2, bool strict = false) {
 	if (type1 == type2) {
-		return true;
+		return type1;
+	} else if (type1->CheckCast(type2) && !strict) {
+		return type2;
+	} else if (type2->CheckCast(type1) && !strict) {
+		return type1;
 	} else {
 		//Кинуть ошибку
-		return false;
+		return nullptr;
 	}
 }
 
@@ -359,7 +367,7 @@ ITableTypeElementPtr Syntax::intervalType() {
 		startIntervalTT = IntervalTableType<std::string>::Create(
 			GetIdentOfCurrentToken(),
 			baseType,
-			IdentConstType::Char
+			IdentConstType::EnumChar
 		);
 	} else if (constantStart() || stringQuote()) {
 		IdentConstType type;
@@ -534,10 +542,6 @@ void Syntax::operatorBlock() {
 
 void Syntax::unmarkedOperator() {
 	if (Accept(TokenTypeEnum::Ident, false, false)) {
-		
-
-		GetNext();
-
 		simpleOperator();
 	} else if (complexOperatorStart()) {
 		complexOperator();
@@ -554,11 +558,13 @@ void Syntax::assingmentOperator() {
 
 	ITableTypeElementPtr identType = GetTypeFromCurrentView(GetIdentOfCurrentToken(), UsageEnum::Var);
 
+	GetNext();
+
 	Accept(KeywordsType::Define);
 
 	ITableTypeElementPtr operType = expression();
 
-	Accept(identType, operType);
+	AcceptTypes(identType, operType);
 }
 
 ITableTypeElementPtr Syntax::expression() {
@@ -574,7 +580,7 @@ ITableTypeElementPtr Syntax::expression() {
 	}
 
 	if (rValue != nullptr) {
-		Accept(lValue, rValue);
+		//Accept(lValue, rValue);
 
 		return GetTypeFromFictiveView("boolean", UsageEnum::Type);
 	} else {
@@ -597,6 +603,12 @@ ITableTypeElementPtr Syntax::simpleExpression() {
 
 		rValue = term();
 	}
+
+	if (rValue != nullptr) {
+		return AcceptTypes(lValue, rValue);
+	} else {
+		return lValue;
+	}
 }
 
 ITableTypeElementPtr Syntax::term() {
@@ -610,63 +622,81 @@ ITableTypeElementPtr Syntax::term() {
 
 		rValue = factor();
 	}
+
+	if (rValue != nullptr) {
+		return AcceptTypes(lValue, rValue);
+	} else {
+		return lValue;
+	}
 }
 
 ITableTypeElementPtr Syntax::factor() {
-	ITableTypeElementPtr lValue;
-	ITableTypeElementPtr rValue;
+	ITableTypeElementPtr type;
 
 	if (Accept(TokenTypeEnum::Ident, false, false)) {
-		lValue = var();
-	} else if (constantStart()) {
+		type = var();
+	} else if (constantStart() || stringQuote()) {
+		type = constant();
+	} else if (Accept(KeywordsType::OpenBracket, false, false)) {
 		GetNext();
-	} else if (signStart()) {
-		expression();
 
-		while (signStart()) {
-			GetNext();
+		type = expression();
 
-			expression();
-		}
+		Accept(KeywordsType::CloseBracket);
 	} else if (Accept(KeywordsType::Not, false, false)) {
 		GetNext();
 
-		factor();
+		type = factor();
 	} else {
 		//Кинуть ошибку
 	}
+
+	return type;
 }
 
 ITableTypeElementPtr Syntax::var() {
-	ITableTypeElementPtr varType = GetTypeFromCurrentView(GetIdentOfCurrentToken(), UsageEnum::Var);
+	std::vector<UsageEnum> allowedUsage = { UsageEnum::Var, UsageEnum::Const };
+	ITableTypeElementPtr varType = GetTypeFromCurrentView(GetIdentOfCurrentToken(), allowedUsage);
 
-	if (varType->type == IdentTypeEnum::Scalar || (varType->type == IdentTypeEnum::Enum && )) {
+	GetNext();
+
+	if (varType->type == IdentTypeEnum::Array) {
+		return indexedVar();
+	} else {
 		return varType;
-	} else if (varType->type == IdentTypeEnum::Enum) {
-		
 	}
+}
+
+ITableTypeElementPtr Syntax::indexedVar() {
+	ITableTypeElementPtr varType = GetTypeFromCurrentView(GetIdentOfCurrentToken(), UsageEnum::Var);
+	ITableTypeElementPtr arrayElementType = varType;
 
 	while (Accept(KeywordsType::OpenSquare, false, false)) {
+		ArrayPtr arr = std::dynamic_pointer_cast<ArrayTableType>(arrayElementType);
+		arrayElementType = arr->elementsType;
+
+		int dim = 0;
+
 		GetNext();
 
-		expression();
+		ITableTypeElementPtr indexType = expression();
+
+		AcceptTypes(indexType, arr->GetIntervalType(dim), true);
 
 		while (Accept(KeywordsType::Comma, false, false)) {
+			dim++;
+
 			GetNext();
 
-			expression();
+			indexType = expression();
+
+			AcceptTypes(indexType, arr->GetIntervalType(dim), true);
 		}
 
 		Accept(KeywordsType::CloseSquare);
 	}
-}
 
-ITableTypeElementPtr Syntax::simpleVar() {
-	
-}
-
-ITableTypeElementPtr Syntax::indexedVar() {
-	
+	return arrayElementType;
 }
 
 void Syntax::complexOperator() {
@@ -681,7 +711,10 @@ void Syntax::complexOperator() {
 
 void Syntax::ifBlock() {
 	Accept(KeywordsType::If);
-	expression();
+
+	ITableTypeElementPtr exprType = expression();
+	AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));	
+
 	Accept(KeywordsType::Then);
 	operatorBlock();
 
@@ -694,7 +727,10 @@ void Syntax::ifBlock() {
 
 void Syntax::whileBlock() {
 	Accept(KeywordsType::While);
-	expression();
+	
+	ITableTypeElementPtr exprType = expression();
+	AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));
+
 	Accept(KeywordsType::Do);
 	operatorBlock();
 }

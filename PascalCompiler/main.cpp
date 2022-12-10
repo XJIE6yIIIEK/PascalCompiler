@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
 
 	try {
 		syntax.Compile();
-	} catch (UnexpectedToken& e) {
+	} catch (CustomException& e) {
 		std::cout << e.what() << std::endl;
 	}
 

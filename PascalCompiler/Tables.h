@@ -22,10 +22,12 @@ using TableIdentPtr = std::shared_ptr<TableIdent>;
 using TableIdentElementPtr = std::shared_ptr<TableIdentElement>;
 using UOMTableIdent = std::unordered_map<std::string, TableIdentElementPtr>;
 using ITableTypeElementPtr = std::shared_ptr<ITableTypeElement>;
+using ITableTypeElementWPtr = std::weak_ptr<ITableTypeElement>;
 
 using ScalarPtr = std::shared_ptr<ScalarTableType>;
 using EnumPtr = std::shared_ptr<EnumTableType>;
 using ArrayPtr = std::shared_ptr<ArrayTableType>;
+using IntervalGenPtr = std::shared_ptr<IntervalTableTypeGen>;
 
 using DimensionalTypeVector = std::vector<ITableTypeElementPtr>;
 using DimensionalTypeVectorPtr = std::shared_ptr<std::vector<ITableTypeElementPtr>>;
@@ -49,7 +51,8 @@ enum class IdentConstType {
 	Int,
 	Bool,
 	Float,
-	Char
+	Char,
+	EnumChar
 };
 
 class TableIdent {
@@ -85,9 +88,13 @@ class TableType {
 class ITableTypeElement {
 	public:
 		IdentTypeEnum type;
+		std::vector<ITableTypeElementWPtr> allowedCasts;
 
 		ITableTypeElement(IdentTypeEnum type);
 		virtual ~ITableTypeElement() = NULL;
+
+		void AddCast(ITableTypeElementPtr type);
+		bool CheckCast(ITableTypeElementPtr type);
 };
 
 class ScalarTableType : public ITableTypeElement {
@@ -129,7 +136,9 @@ class IntervalTableTypeGen : public ITableTypeElement {
 		IntervalTableTypeGen(ITableTypeElementPtr baseType, IdentConstType constType);
 		virtual ~IntervalTableTypeGen() = NULL;
 
-		ITableTypeElementPtr GetBaseType();
+		ITableTypeElementPtr GetType();
+		static ITableTypeElementPtr GetBaseType(ITableTypeElementPtr intervalType);
+		static bool CheckAllowedTypes(ITableTypeElementPtr intervalType, std::vector<IdentConstType> types);
 };
 
 template<typename IntervalClass>

@@ -79,6 +79,23 @@ TableIdentElement::~TableIdentElement() { }
 ITableTypeElement::ITableTypeElement(IdentTypeEnum type) : type(type) { }
 ITableTypeElement::~ITableTypeElement() { }
 
+void ITableTypeElement::AddCast(ITableTypeElementPtr type) {
+	allowedCasts.push_back(type);
+}
+
+bool ITableTypeElement::CheckCast(ITableTypeElementPtr type) {
+	
+	std::vector<ITableTypeElementWPtr>::iterator iter = allowedCasts.begin();
+
+	while (iter != allowedCasts.end()) {
+		if ((*iter++).lock() == type) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 ScalarTableType::ScalarTableType() : ITableTypeElement(IdentTypeEnum::Scalar) { }
 ScalarTableType::~ScalarTableType() { }
 
@@ -110,7 +127,7 @@ ITableTypeElementPtr ArrayTableType::GetElementsType() {
 }
 
 ITableTypeElementPtr ArrayTableType::GetIntervalType(int dim) {
-	return intervalType->at(dim);
+	return std::dynamic_pointer_cast<IntervalTableTypeGen>(intervalType->at(dim))->baseType;
 }
 
 IntervalTableTypeGen::IntervalTableTypeGen() : ITableTypeElement(IdentTypeEnum::Interval) {}
@@ -119,8 +136,22 @@ IntervalTableTypeGen::~IntervalTableTypeGen() {}
 IntervalTableTypeGen::IntervalTableTypeGen(ITableTypeElementPtr baseType, IdentConstType constType) : 
 	ITableTypeElement(IdentTypeEnum::Interval), baseType(baseType), intervalType(constType) {}
 
-ITableTypeElementPtr IntervalTableTypeGen::GetBaseType() {
+ITableTypeElementPtr IntervalTableTypeGen::GetType() {
 	return baseType;
+}
+
+ITableTypeElementPtr IntervalTableTypeGen::GetBaseType(ITableTypeElementPtr intervalType) {
+	return std::dynamic_pointer_cast<IntervalTableTypeGen>(intervalType)->baseType;
+}
+
+bool IntervalTableTypeGen::CheckAllowedTypes(ITableTypeElementPtr intervalType, std::vector<IdentConstType> types) {
+	IntervalGenPtr intervalGenType = std::dynamic_pointer_cast<IntervalTableTypeGen>(intervalType);
+
+	if (std::find(types.begin(), types.end(), intervalGenType->intervalType) != types.end()) {
+		return true;
+	} else {
+		return false;
+	}
 }
 
 template<typename IntervalClass>

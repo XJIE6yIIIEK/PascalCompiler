@@ -1,4 +1,5 @@
 #include "LexerFSM.h"
+#include "CustomExceptions.h"
 
 StateNode::StateNode(StateType state, LexemType type = LexemType::Null) : state(state), type(type) {}
 
@@ -22,6 +23,9 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	StateNodePtr state16 = std::make_shared<StateNode>(StateType::State16);
 	StateNodePtr state17 = std::make_shared<StateNode>(StateType::State17, LexemType::KeywordOrIdent);
 	StateNodePtr state18 = std::make_shared<StateNode>(StateType::State18);
+	StateNodePtr stateErrUnkSy = std::make_shared<StateNode>(StateType::ErrorUnkwownSymbol);
+	StateNodePtr stateErrWrngName = std::make_shared<StateNode>(StateType::ErrorWrongName);
+	StateNodePtr stateErrWrngNum = std::make_shared<StateNode>(StateType::ErrorWrongNumber);
 
 	statesVector.push_back(state0);
 	statesVector.push_back(state1);
@@ -42,6 +46,9 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	statesVector.push_back(state16);
 	statesVector.push_back(state17);
 	statesVector.push_back(state18);
+	statesVector.push_back(stateErrUnkSy);
+	statesVector.push_back(stateErrWrngName);
+	statesVector.push_back(stateErrWrngNum);
 
 	//START INITIALIZING
 	TupleVectorPtr state_Start_1 = std::make_unique<TupleVector>(TupleVector({
@@ -98,6 +105,9 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 		std::make_tuple('<', '<')
 	}));
 	AddTransition(startState, state10, std::move(state_Start_10));
+
+	TupleVectorPtr state_Start_E = nullptr;
+	AddTransition(startState, stateErrUnkSy, std::move(state_Start_E));
 	//START COMPLETE
 
 	//STATE 1 INITIALIZING
@@ -153,6 +163,13 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	}));
 	AddTransition(state5, state16, std::move(state_5_16));
 
+	TupleVectorPtr state_5_E = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('a', 'z'),
+		std::make_tuple('A', 'Z'),
+		std::make_tuple('_', '_')
+	}));
+	AddTransition(state5, stateErrWrngName, std::move(state_5_E));
+
 	TupleVectorPtr state_5_T = nullptr; // 5 - 0
 	AddTransition(state5, terminalState, std::move(state_5_T));
 	//STATE 5 COMPLETE
@@ -162,6 +179,13 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 		std::make_tuple('0', '9'),
 	}));
 	AddTransition(state6, state6, std::move(state_6_6));
+
+	TupleVectorPtr state_6_E = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('a', 'z'),
+		std::make_tuple('A', 'Z'),
+		std::make_tuple('_', '_')
+		}));
+	AddTransition(state6, stateErrWrngNum, std::move(state_6_E));
 
 	TupleVectorPtr state_6_T = nullptr; // 6 - 0
 	AddTransition(state6, terminalState, std::move(state_6_T));
@@ -253,6 +277,13 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 		std::make_tuple('.', '.'),
 	}));
 	AddTransition(state16, state17, std::move(state_16_17));
+
+	TupleVectorPtr state_16_E = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('a', 'z'),
+		std::make_tuple('A', 'Z'),
+		std::make_tuple('_', '_')
+	}));
+	AddTransition(state16, stateErrWrngNum, std::move(state_16_E));
 	//STATE 16 COMPLETE
 
 	//STATE 17
@@ -260,6 +291,9 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 		std::make_tuple('.', '.')
 	}));
 	AddTransition(state17, state18, std::move(state_17_18));
+
+	TupleVectorPtr state_17_E = nullptr;
+	AddTransition(state17, stateErrWrngNum, std::move(state_17_E));
 	//STATE 17 COMPLETE
 
 	//STATE 18
@@ -313,4 +347,23 @@ StateType LexerFSM::NextState(char ch) {
 
 void LexerFSM::Reset() {
 	currentState = startState;
+}
+
+void LexerFSM::ThrowError(PositionPtr pos) {
+	StateType errState = currentState->state;
+	Reset();
+
+	switch (errState) {
+		case StateType::ErrorUnkwownSymbol: {
+			throw WrongSymbol::CreateException(std::move(pos));
+		}; break;
+
+		case StateType::ErrorWrongName: {
+			throw WrongName::CreateException(std::move(pos));
+		}; break;
+
+		case StateType::ErrorWrongNumber: {
+			throw WrongNumber::CreateException(std::move(pos));
+		}; break;
+	}
 }

@@ -22,7 +22,7 @@ class Syntax {
 		bool Accept(KeywordsType kwType, bool next, bool throwErr);
 		bool Accept(TokenTypeEnum tokenType, bool next, bool throwErr);
 		bool Accept(TokenConstType constType, bool next, bool throwErr);
-		bool Accept(ITableTypeElementPtr type1, ITableTypeElementPtr type2);
+		ITableTypeElementPtr AcceptTypes(ITableTypeElementPtr type1, ITableTypeElementPtr type2, bool strict);
 
 		void GetNext();
 		TokenKeywords* GetKeywordToken();
@@ -66,7 +66,7 @@ class Syntax {
 		void whileBlock();
 		ITableTypeElementPtr var();
 		ITableTypeElementPtr indexedVar();
-		ITableTypeElementPtr simleVar();
+		ITableTypeElementPtr simpleVar();
 
 		bool boolOpStart();
 		bool additiveOpStart();
