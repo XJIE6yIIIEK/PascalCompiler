@@ -23,6 +23,7 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	StateNodePtr state16 = std::make_shared<StateNode>(StateType::State16);
 	StateNodePtr state17 = std::make_shared<StateNode>(StateType::State17, LexemType::KeywordOrIdent);
 	StateNodePtr state18 = std::make_shared<StateNode>(StateType::State18);
+	StateNodePtr state19 = std::make_shared<StateNode>(StateType::State19);
 	StateNodePtr stateErrUnkSy = std::make_shared<StateNode>(StateType::ErrorUnkwownSymbol);
 	StateNodePtr stateErrWrngName = std::make_shared<StateNode>(StateType::ErrorWrongName);
 	StateNodePtr stateErrWrngNum = std::make_shared<StateNode>(StateType::ErrorWrongNumber);
@@ -46,6 +47,7 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	statesVector.push_back(state16);
 	statesVector.push_back(state17);
 	statesVector.push_back(state18);
+	statesVector.push_back(state19);
 	statesVector.push_back(stateErrUnkSy);
 	statesVector.push_back(stateErrWrngName);
 	statesVector.push_back(stateErrWrngNum);
@@ -89,7 +91,6 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 		std::make_tuple('/', '/'),
 		std::make_tuple('+', '+'),
 		std::make_tuple('-', '-'),
-		std::make_tuple('=', '='),
 		std::make_tuple(')', ')'),
 		std::make_tuple('*', '*')
 	}));
@@ -105,6 +106,11 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 		std::make_tuple('<', '<')
 	}));
 	AddTransition(startState, state10, std::move(state_Start_10));
+
+	TupleVectorPtr state_Start_19 = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('=', '=')
+	}));
+	AddTransition(startState, state19, std::move(state_Start_19));
 
 	TupleVectorPtr state_Start_E = nullptr;
 	AddTransition(startState, stateErrUnkSy, std::move(state_Start_E));
@@ -301,6 +307,16 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	AddTransition(state18, terminalState, std::move(state_18_T));
 	//STATE 18 COMPLETE
 
+	//STATE 19
+	TupleVectorPtr state_19_0 = std::make_unique<TupleVector>(TupleVector({
+		std::make_tuple('=', '=')
+	}));
+	AddTransition(state19, state0, std::move(state_19_0));
+
+	TupleVectorPtr state_19_T = nullptr;
+	AddTransition(state19, terminalState, std::move(state_1_T));
+	//STATE 19 COMPLETE
+
 	//STATE 0 INITIALIZING
 	TupleVectorPtr state_0_T = nullptr;
 	AddTransition(state0, terminalState, std::move(state_0_T));
@@ -355,15 +371,15 @@ void LexerFSM::ThrowError(PositionPtr pos) {
 
 	switch (errState) {
 		case StateType::ErrorUnkwownSymbol: {
-			throw WrongSymbol::CreateException(std::move(pos));
+			throw WrongSymbol::CreateException(pos.get());
 		}; break;
 
 		case StateType::ErrorWrongName: {
-			throw WrongName::CreateException(std::move(pos));
+			throw WrongName::CreateException(pos.get());
 		}; break;
 
 		case StateType::ErrorWrongNumber: {
-			throw WrongNumber::CreateException(std::move(pos));
+			throw WrongNumber::CreateException(pos.get());
 		}; break;
 	}
 }

@@ -60,7 +60,7 @@ LexemPtr IO::GetNextLexem() {
 
 	PositionPtr startPosition = std::make_unique<Position>(currentPosition.row, currentPosition.col);
 
-	while (!eof && ((curState >= StateType::Start && curState <= StateType::State11) || (curState >= StateType::State14 && curState <= StateType::State18))) {
+	while (!eof && ((curState >= StateType::Start && curState <= StateType::State11) || (curState >= StateType::State14 && curState <= StateType::State19))) {
 		bool eol = false;
 		currentChar = currentLine[currentPosition.col];
 		curState = fsm.NextState(currentChar);
@@ -71,7 +71,7 @@ LexemPtr IO::GetNextLexem() {
 			fsm.ThrowError(std::move(startPosition));
 		}
 
-		if ((curState >= StateType::State0 && curState <= StateType::State13) || (curState >= StateType::State16 && curState <= StateType::State18)) {
+		if ((curState >= StateType::State0 && curState <= StateType::State13) || (curState >= StateType::State16 && curState <= StateType::State19)) {
 			if (curState == StateType::State16 
 				&& (currentPosition.col + 1 == currentLine.size() || currentLine[currentPosition.col + 1] == '.')) {
 				break;

@@ -23,6 +23,19 @@ enum class TokenTypeEnum {
 	Constant
 };
 
+const std::map<TokenConstType, std::string> tokenConstTypeMap = {{
+	{TokenConstType::Integer, ">="},
+	{TokenConstType::Bool, "<="},
+	{TokenConstType::Float, ">"},
+	{TokenConstType::String, "<"}
+}};
+
+const std::map<TokenTypeEnum, std::string> tokenTypeEnumMap = {{
+	{TokenTypeEnum::Keyword, "keyword"},
+	{TokenTypeEnum::Ident, "identifier"},
+	{TokenTypeEnum::Constant, "constant"},
+}};
+
 class Token {
 	public:
 		const TokenTypeEnum type;

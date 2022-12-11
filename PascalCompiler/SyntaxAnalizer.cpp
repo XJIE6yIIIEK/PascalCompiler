@@ -1,19 +1,20 @@
 #include "SyntaxAnalizer.h"
 #include "CustomExceptions.h"
+#include "Keywords.h"
 
 Syntax::Syntax(std::unique_ptr<Tokenizer> tokenizer) : tokenizer(std::move(tokenizer)) { }
 
 Syntax::~Syntax() { }
 
 void Syntax::InitializeIdentTable() {
-	ITableTypeElementPtr intType = std::make_shared<ScalarTableType>();
-	ITableTypeElementPtr floatType = std::make_shared<ScalarTableType>();
-	ITableTypeElementPtr charType = std::make_shared<ScalarTableType>();
+	ITableTypeElementPtr intType = std::make_shared<ScalarTableType>("integer");
+	ITableTypeElementPtr floatType = std::make_shared<ScalarTableType>("float");
+	ITableTypeElementPtr charType = std::make_shared<ScalarTableType>("char");
 
-	ITableTypeElementPtr boolType = std::make_shared<EnumTableType>();
+	ITableTypeElementPtr boolType = std::make_shared<EnumTableType>("boolean");
 	EnumPtr boolEnum = std::dynamic_pointer_cast<EnumTableType>(boolType);
-	boolEnum->Add("false");
-	boolEnum->Add("true");
+	boolEnum->Add("false", nullptr);
+	boolEnum->Add("true", nullptr);
 
 	intType->AddCast(charType);
 	intType->AddCast(floatType);
@@ -21,6 +22,42 @@ void Syntax::InitializeIdentTable() {
 	floatType->AddCast(charType);
 
 	boolType->AddCast(charType);
+
+	std::vector<KeywordsType> intOper = {
+		KeywordsType::Multiply, KeywordsType::Division,
+		KeywordsType::Mod, KeywordsType::Div,
+		KeywordsType::Plus, KeywordsType::Minus,
+		KeywordsType::Equalty, KeywordsType::Less,
+		KeywordsType::LessEqual, KeywordsType::More,
+		KeywordsType::MoreEqual, KeywordsType::NotEqual
+	};
+
+	std::vector<KeywordsType> floatOper = {
+		KeywordsType::Multiply, KeywordsType::Division,
+		KeywordsType::Plus, KeywordsType::Minus,
+		KeywordsType::Equalty, KeywordsType::Less,
+		KeywordsType::LessEqual, KeywordsType::More,
+		KeywordsType::MoreEqual, KeywordsType::NotEqual
+	};
+
+	std::vector<KeywordsType> charOper = {
+		KeywordsType::Plus,KeywordsType::Equalty, 
+		KeywordsType::Less,KeywordsType::LessEqual, 
+		KeywordsType::More,KeywordsType::MoreEqual, 
+		KeywordsType::NotEqual
+	};
+
+	std::vector<KeywordsType> boolOper = {
+		KeywordsType::Not, KeywordsType::And,
+		KeywordsType::Or, KeywordsType::Equalty, 
+		KeywordsType::NotEqual,
+
+	};
+
+	intType->AddAllowedOperations(intOper);
+	floatType->AddAllowedOperations(floatOper);
+	charType->AddAllowedOperations(charOper);
+	boolType->AddAllowedOperations(boolOper);
 
 	TableIdentPtr fictiveTable = std::make_shared<TableIdent>();
 	tableStack.push(fictiveTable);
@@ -59,10 +96,18 @@ TokenTypeConst<ConstType>* Syntax::GetTypeConstToken(TokenConst* tokenConst) {
 }
 
 bool Syntax::Accept(KeywordsType kwType, bool next = true, bool throwErr = true) {
+	if (curToken == nullptr) {
+		throw EndOfProgram::CreateException();
+	}
+
 	TokenKeywords* token = GetKeywordToken();
 
 	if (token == nullptr) {
-		throw EndOfProgram::CreateException();
+		if (throwErr) {
+			throw UnexpectedKeyword::CreateException(enumToKeywords.find(kwType)->second, curToken->pos.get());
+		} else {
+			return false;
+		}
 	}
 
 	if (token->kwType == kwType) {
@@ -75,8 +120,7 @@ bool Syntax::Accept(KeywordsType kwType, bool next = true, bool throwErr = true)
 
 	
 	if (throwErr) {
-		std::string tokens = "a";
-		throw UnexpectedToken::CreateException(tokens, std::move(curToken->pos));
+		throw UnexpectedKeyword::CreateException(enumToKeywords.find(kwType)->second, curToken->pos.get());
 	} else {
 		return false;
 	}
@@ -95,20 +139,26 @@ bool Syntax::Accept(TokenTypeEnum tokenType, bool next = true, bool throwErr = t
 		return true;
 	}
 
-	//Добавить выкидывание ошибок
 	if (throwErr) {
-		std::string tokens = "a";
-		throw UnexpectedToken::CreateException(tokens, std::move(curToken->pos));
+		throw UnexpectedToken::CreateException(tokenTypeEnumMap.find(tokenType)->second, curToken->pos.get());
 	} else {
 		return false;
 	}
 }
 
 bool Syntax::Accept(TokenConstType constType, bool next = true, bool throwErr = true) {
+	if (curToken == nullptr) {
+		throw EndOfProgram::CreateException();
+	}
+
 	TokenConst* tokenConst = GetConstToken();
 
 	if (tokenConst == nullptr) {
-		throw EndOfProgram::CreateException();
+		if (throwErr) {
+			throw UnexpectedConstant::CreateException(tokenConstTypeMap.find(constType)->second, curToken->pos.get());
+		} else {
+			return false;
+		}
 	}
 
 	if (tokenConst->constType == constType) {
@@ -119,10 +169,8 @@ bool Syntax::Accept(TokenConstType constType, bool next = true, bool throwErr = 
 		return true;
 	}
 
-	//Добавить выкидывание ошибок
 	if (throwErr) {
-		std::string tokens = "a";
-		throw UnexpectedToken::CreateException(tokens, std::move(curToken->pos));
+		throw UnexpectedConstant::CreateException(tokenConstTypeMap.find(constType)->second, curToken->pos.get());
 	} else {
 		return false;
 	}
@@ -136,8 +184,33 @@ ITableTypeElementPtr Syntax::AcceptTypes(ITableTypeElementPtr type1, ITableTypeE
 	} else if (type2->CheckCast(type1) && !strict) {
 		return type1;
 	} else {
-		//Кинуть ошибку
-		return nullptr;
+		throw UnexpectedType::CreateException(type1->typeName, type2->typeName, curToken->pos.get());
+	}
+}
+
+ITableTypeElementPtr Syntax::AcceptOperation(ITableTypeElementPtr type1, ITableTypeElementPtr type2, KeywordsType operationType, PositionPtr pos) {
+	ITableTypeElementPtr opType = AcceptTypes(type1, type2);
+
+	if (opType->CheckOperation(operationType)) {
+		if (operationType >= KeywordsType::Plus) {
+			return opType;
+		} else {
+			return GetTypeFromFictiveView("boolean", UsageEnum::Type);
+		}
+	} else {
+		throw UnknownOperation::CreateException(opType->typeName, enumToKeywords.find(operationType)->second, pos.get());
+	}
+}
+
+ITableTypeElementPtr Syntax::AcceptUnarOperation(ITableTypeElementPtr type1, KeywordsType operationType, PositionPtr pos) {
+	if (type1->CheckOperation(operationType)) {
+		if (operationType == KeywordsType::Plus || operationType == KeywordsType::Minus) {
+			return type1;
+		} else {
+			return GetTypeFromFictiveView("boolean", UsageEnum::Type);
+		}
+	} else {
+		throw UnknownOperation::CreateException(type1->typeName, enumToKeywords.find(operationType)->second, pos.get());
 	}
 }
 
@@ -148,15 +221,15 @@ ITableTypeElementPtr Syntax::GetTypeFromFictiveView(std::string ident, UsageEnum
 		table = table->outerView;
 	}
 
-	return table->GetType(ident, allowedUsage );
+	return table->GetType(ident, allowedUsage, curToken->pos.get());
 }
 
 ITableTypeElementPtr Syntax::GetTypeFromCurrentView(std::string ident, UsageEnum allowedUsage) {
-	return tableStack.top()->GetType(ident, allowedUsage );
+	return tableStack.top()->GetType(ident, allowedUsage, curToken->pos.get());
 }
 
 ITableTypeElementPtr Syntax::GetTypeFromCurrentView(std::string ident, UsageEnumVector& allowedUsage) {
-	return tableStack.top()->GetType(ident, allowedUsage);
+	return tableStack.top()->GetType(ident, allowedUsage, curToken->pos.get());
 }
 
 std::string Syntax::GetIdentOfCurrentToken() {
@@ -231,7 +304,7 @@ ITableTypeElementPtr Syntax::constantValue() {
 	} else if (Accept(TokenTypeEnum::Ident, false, false)) {
 		type = GetTypeFromCurrentView(GetIdentOfCurrentToken(), UsageEnum::Const);
 	} else {
-		throw UnexpectedToken::CreateException("Float, Integer, Ident", std::move(curToken->pos));
+		throw SyntaxError::CreateException("<constant identifier> or constant", curToken->pos.get());
 	}
 
 	GetNext();
@@ -298,14 +371,6 @@ void Syntax::similarVarSection() {
 	}
 }
 
-void Syntax::type() {
-	if (constantStart()) {
-		GetNext();
-	} else {
-		throw UnexpectedToken::CreateException("bool, char, float, int", std::move(curToken->pos));
-	}
-}
-
 void Syntax::typeBlock() {
 	if (!Accept(KeywordsType::Type, false, false)) {
 		return;
@@ -349,7 +414,7 @@ ITableTypeElementPtr Syntax::simpleTypeDeclaration() {
 	} else if (constantStart() || stringQuote()) {
 		return intervalType();
 	} else {
-		//Кинуть ошибку
+		throw SyntaxError::CreateException("<enum>, <identifier> or constant", curToken->pos.get());
 	}
 }
 
@@ -358,8 +423,7 @@ ITableTypeElementPtr Syntax::intervalType() {
 	ITableTypeElementPtr baseType;
 
 	if (!(constantStart() || stringQuote() || Accept(TokenTypeEnum::Ident, false, false))) {
-		//Кинуть ошибку
-		return nullptr;
+		throw SyntaxError::CreateException("<enum identifier> or constant", curToken->pos.get());
 	}
 
 	if (Accept(TokenTypeEnum::Ident, false, false)) {
@@ -367,7 +431,8 @@ ITableTypeElementPtr Syntax::intervalType() {
 		startIntervalTT = IntervalTableType<std::string>::Create(
 			GetIdentOfCurrentToken(),
 			baseType,
-			IdentConstType::EnumChar
+			IdentConstType::EnumChar,
+			GetIdentOfCurrentToken()
 		);
 	} else if (constantStart() || stringQuote()) {
 		IdentConstType type;
@@ -378,23 +443,23 @@ ITableTypeElementPtr Syntax::intervalType() {
 
 			baseType = GetTypeFromFictiveView("char", UsageEnum::Type);
 			type = IdentConstType::Char;
-			startIntervalTT = IntervalTableType<std::string>::Create(curToken.get(), baseType, type);
+			startIntervalTT = IntervalTableType<std::string>::Create(curToken.get(), baseType, type, "char");
 
 			GetNext();
 			Accept(KeywordsType::Quote, false, true);
 		} else if (Accept(TokenConstType::Bool, false, false)) {
 			baseType = GetTypeFromFictiveView("boolean", UsageEnum::Type);
 			type = IdentConstType::Bool;
-			startIntervalTT = IntervalTableType<bool>::Create(curToken.get(), baseType, type);
+			startIntervalTT = IntervalTableType<bool>::Create(curToken.get(), baseType, type, "boolean");
 		} else if (Accept(TokenConstType::Integer, false, false)) {
 			baseType = GetTypeFromFictiveView("integer", UsageEnum::Type);
 			type = IdentConstType::Int;
-			startIntervalTT = IntervalTableType<int>::Create(curToken.get(), baseType, type);
+			startIntervalTT = IntervalTableType<int>::Create(curToken.get(), baseType, type, "integer");
 		} else {
-			//Кинуть ошибку
+			throw SyntaxError::CreateException("<enum identifier> or constant", curToken->pos.get());
 		}
 	} else {
-		//Кинуть ошибку
+		throw SyntaxError::CreateException("<enum identifier> or constant", curToken->pos.get());
 	}
 
 	GetNext();
@@ -418,15 +483,13 @@ ITableTypeElementPtr Syntax::intervalType() {
 		} else if (Accept(TokenConstType::Integer, false, false)) {
 			endIntervalTT = GetTypeFromFictiveView("integer", UsageEnum::Type);
 		} else {
-			//Кинуть ошибку
+			throw SyntaxError::CreateException("<enum identifier> or constant", curToken->pos.get());
 		}
 	} else {
-		//Кинуть ошибку
+		throw SyntaxError::CreateException("<enum identifier> or constant", curToken->pos.get());
 	}
 
-	if (startIntervalTT != endIntervalTT) {
-		//Кинуть ошибку
-	}
+	AcceptTypes(startIntervalTT, endIntervalTT);
 
 	if (Accept(TokenTypeEnum::Ident, false, false)) {
 		IntervalTableType<std::string>::AddMax(startIntervalTT, GetIdentOfCurrentToken());
@@ -463,7 +526,7 @@ ITableTypeElementPtr Syntax::enumType() {
 	GetNext();
 
 	std::vector<std::string> idents;
-	ITableTypeElementPtr enumTT = std::make_shared<EnumTableType>();
+	ITableTypeElementPtr enumTT = std::make_shared<EnumTableType>("enumerable");
 	EnumPtr enumType = std::dynamic_pointer_cast<EnumTableType>(enumTT);
 
 
@@ -481,7 +544,7 @@ ITableTypeElementPtr Syntax::enumType() {
 		GetNext();
 	}
 
-	enumType->Add(idents);
+	enumType->Add(idents, curToken->pos.get());
 
 	Accept(KeywordsType::CloseBracket);
 
@@ -512,7 +575,7 @@ ITableTypeElementPtr Syntax::regularTypeDeclaration() {
 
 	ITableTypeElementPtr elementsType = componentType();
 	
-	return std::make_shared<ArrayTableType>(elementsType, dims, dim);
+	return std::make_shared<ArrayTableType>(elementsType, dims, dim, "array");
 }
 
 ITableTypeElementPtr Syntax::componentType() {
@@ -568,21 +631,24 @@ void Syntax::assingmentOperator() {
 }
 
 ITableTypeElementPtr Syntax::expression() {
-	ITableTypeElementPtr lValue = nullptr;
-	ITableTypeElementPtr rValue = nullptr;
+	ITableTypeElementPtr lValue;
+	ITableTypeElementPtr rValue;
+	KeywordsType op;
+	PositionPtr pos;
 
 	lValue = simpleExpression();
 
-	if (boolOpStart()) {
+	if (relOpStart()) {
+		op = GetKeywordToken()->kwType;
+		pos = std::make_unique<Position>(curToken->pos->row, curToken->pos->col);
+
 		GetNext();
 
 		rValue = simpleExpression();
 	}
 
 	if (rValue != nullptr) {
-		//Accept(lValue, rValue);
-
-		return GetTypeFromFictiveView("boolean", UsageEnum::Type);
+		return AcceptOperation(lValue, rValue, op, std::move(pos));
 	} else {
 		return lValue;
 	}
@@ -591,6 +657,8 @@ ITableTypeElementPtr Syntax::expression() {
 ITableTypeElementPtr Syntax::simpleExpression() {
 	ITableTypeElementPtr lValue;
 	ITableTypeElementPtr rValue;
+	KeywordsType op;
+	PositionPtr pos;
 
 	if (signStart()) {
 		GetNext();
@@ -599,13 +667,16 @@ ITableTypeElementPtr Syntax::simpleExpression() {
 	lValue = term();
 
 	while (additiveOpStart()) {
+		op = GetKeywordToken()->kwType;
+		pos = std::make_unique<Position>(curToken->pos->row, curToken->pos->col);
+
 		GetNext();
 
 		rValue = term();
 	}
 
 	if (rValue != nullptr) {
-		return AcceptTypes(lValue, rValue);
+		return AcceptOperation(lValue, rValue, op, std::move(pos));
 	} else {
 		return lValue;
 	}
@@ -614,17 +685,22 @@ ITableTypeElementPtr Syntax::simpleExpression() {
 ITableTypeElementPtr Syntax::term() {
 	ITableTypeElementPtr lValue;
 	ITableTypeElementPtr rValue;
+	KeywordsType op;
+	PositionPtr pos;
 
 	lValue = factor();
 
 	while (multiplicativeOpStart()) {
+		op = GetKeywordToken()->kwType;
+		pos = std::make_unique<Position>(curToken->pos->row, curToken->pos->col);
+
 		GetNext();
 
 		rValue = factor();
 	}
 
 	if (rValue != nullptr) {
-		return AcceptTypes(lValue, rValue);
+		return AcceptOperation(lValue, rValue, op, std::move(pos));
 	} else {
 		return lValue;
 	}
@@ -644,11 +720,15 @@ ITableTypeElementPtr Syntax::factor() {
 
 		Accept(KeywordsType::CloseBracket);
 	} else if (Accept(KeywordsType::Not, false, false)) {
+		KeywordsType op = GetKeywordToken()->kwType;
+		PositionPtr pos = std::make_unique<Position>(curToken->pos->row, curToken->pos->col);
+
 		GetNext();
 
 		type = factor();
+		type = AcceptUnarOperation(type, op, std::move(pos));
 	} else {
-		//Кинуть ошибку
+		throw SyntaxError::CreateException("<var identifier>, (, not, constant", curToken->pos.get());
 	}
 
 	return type;
@@ -709,6 +789,14 @@ void Syntax::complexOperator() {
 	}
 }
 
+void Syntax::complexOpBlock() {
+	if (Accept(KeywordsType::Begin, false, false)) {
+		opBlock();
+	} else {
+		operatorBlock();
+	}
+}
+
 void Syntax::ifBlock() {
 	Accept(KeywordsType::If);
 
@@ -716,13 +804,15 @@ void Syntax::ifBlock() {
 	AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));	
 
 	Accept(KeywordsType::Then);
-	operatorBlock();
+	complexOpBlock();
 
 	if (Accept(KeywordsType::Else, false, false)) {
 		GetNext();
 
-		operatorBlock();
+		complexOpBlock();
 	}
+
+	Accept(KeywordsType::Semicolon);
 }
 
 void Syntax::whileBlock() {
@@ -732,11 +822,14 @@ void Syntax::whileBlock() {
 	AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));
 
 	Accept(KeywordsType::Do);
-	operatorBlock();
+
+	complexOpBlock();
+
+	Accept(KeywordsType::Semicolon);
 }
 
-bool Syntax::boolOpStart() {
-	return Accept(KeywordsType::Equal, false, false) ||
+bool Syntax::relOpStart() {
+	return Accept(KeywordsType::Equalty, false, false) ||
 		Accept(KeywordsType::NotEqual, false, false) ||
 		Accept(KeywordsType::More, false, false) ||
 		Accept(KeywordsType::MoreEqual, false, false) ||

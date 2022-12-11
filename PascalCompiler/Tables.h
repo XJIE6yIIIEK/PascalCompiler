@@ -5,6 +5,8 @@
 #include <memory>
 #include <algorithm>
 #include "Lexer.h"
+#include "Position.h"
+#include "Keywords.h"
 
 class ITableTypeElement;
 class TableIdent;
@@ -65,8 +67,8 @@ class TableIdent {
 		~TableIdent();
 
 		TableIdentElementPtr Add(std::string ident, UsageEnum usage, ITableTypeElementPtr type = nullptr);
-		ITableTypeElementPtr GetType(std::string ident, UsageEnum allowedUsage);
-		ITableTypeElementPtr GetType(std::string ident, UsageEnumVector& allowedUsage);
+		ITableTypeElementPtr GetType(std::string ident, UsageEnum allowedUsage, Position* pos);
+		ITableTypeElementPtr GetType(std::string ident, UsageEnumVector& allowedUsage, Position* pos);
 		bool InView(std::string ident, UsageEnum allowedUsage);
 		bool InView(std::string ident, UsageEnumVector& allowedUsage);
 };
@@ -80,26 +82,27 @@ class TableIdentElement {
 		~TableIdentElement();
 };
 
-class TableType {
-	
-};
-
 //Интерфейс для элементов таблицы типов
 class ITableTypeElement {
 	public:
 		IdentTypeEnum type;
 		std::vector<ITableTypeElementWPtr> allowedCasts;
+		std::vector<KeywordsType> allowedOperations;
 
-		ITableTypeElement(IdentTypeEnum type);
+		std::string typeName;
+
+		ITableTypeElement(IdentTypeEnum type, std::string typeName);
 		virtual ~ITableTypeElement() = NULL;
 
 		void AddCast(ITableTypeElementPtr type);
+		void AddAllowedOperations(std::vector<KeywordsType>& operations);
 		bool CheckCast(ITableTypeElementPtr type);
+		bool CheckOperation(KeywordsType operation);
 };
 
 class ScalarTableType : public ITableTypeElement {
 	public:
-		ScalarTableType();
+		ScalarTableType(std::string typeName);
 		~ScalarTableType();
 };
 
@@ -109,7 +112,7 @@ class ArrayTableType : public ITableTypeElement {
 		DimensionalTypeVectorPtr intervalType;
 		int dim;
 
-		ArrayTableType(ITableTypeElementPtr elementsType, DimensionalTypeVectorPtr intervalType, int dim);
+		ArrayTableType(ITableTypeElementPtr elementsType, DimensionalTypeVectorPtr intervalType, int dim, std::string typeName);
 		~ArrayTableType();
 
 		ITableTypeElementPtr GetElementsType();
@@ -120,11 +123,11 @@ class EnumTableType : public ITableTypeElement {
 	public:
 		std::vector<std::string> constantList;
 
-		EnumTableType();
+		EnumTableType(std::string typeName);
 		~EnumTableType();
 
-		void Add(std::string constant);
-		void Add(std::vector<std::string>& constants);
+		void Add(std::string constant, Position* pos);
+		void Add(std::vector<std::string>& constants, Position* pos);
 };
 
 class IntervalTableTypeGen : public ITableTypeElement {
@@ -132,8 +135,8 @@ class IntervalTableTypeGen : public ITableTypeElement {
 		ITableTypeElementPtr baseType = nullptr ;
 		IdentConstType intervalType;
 
-		IntervalTableTypeGen();
-		IntervalTableTypeGen(ITableTypeElementPtr baseType, IdentConstType constType);
+		IntervalTableTypeGen(std::string typeName);
+		IntervalTableTypeGen(ITableTypeElementPtr baseType, IdentConstType constType, std::string typeName);
 		virtual ~IntervalTableTypeGen() = NULL;
 
 		ITableTypeElementPtr GetType();
@@ -148,12 +151,12 @@ class IntervalTableType : public IntervalTableTypeGen {
 		IntervalClass min;
 
 		IntervalTableType();
-		IntervalTableType(ITableTypeElementPtr baseType, IdentConstType constType);
+		IntervalTableType(ITableTypeElementPtr baseType, IdentConstType constType, std::string typeName);
 		~IntervalTableType();
 
 		static void AddMax(ITableTypeElementPtr intervalTT, IntervalClass maxValue);
 		static void AddMax(ITableTypeElementPtr intervalTT, Token* token);
 
-		static ITableTypeElementPtr Create(IntervalClass minValue, ITableTypeElementPtr baseType, IdentConstType constType);
-		static ITableTypeElementPtr Create(Token* token, ITableTypeElementPtr baseType, IdentConstType constType);
+		static ITableTypeElementPtr Create(IntervalClass minValue, ITableTypeElementPtr baseType, IdentConstType constType, std::string typeName);
+		static ITableTypeElementPtr Create(Token* token, ITableTypeElementPtr baseType, IdentConstType constType, std::string typeName);
 };

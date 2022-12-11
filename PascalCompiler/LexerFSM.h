@@ -40,7 +40,8 @@ enum class StateType {
 	State15 = 16,
 	State16 = 17,
 	State17 = 18,
-	State18 = 19
+	State18 = 19,
+	State19 = 20
 };
 
 class StateNode {

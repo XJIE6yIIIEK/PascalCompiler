@@ -23,6 +23,8 @@ class Syntax {
 		bool Accept(TokenTypeEnum tokenType, bool next, bool throwErr);
 		bool Accept(TokenConstType constType, bool next, bool throwErr);
 		ITableTypeElementPtr AcceptTypes(ITableTypeElementPtr type1, ITableTypeElementPtr type2, bool strict);
+		ITableTypeElementPtr AcceptOperation(ITableTypeElementPtr type1, ITableTypeElementPtr type2, KeywordsType operationType, PositionPtr pos);
+		ITableTypeElementPtr AcceptUnarOperation(ITableTypeElementPtr type1, KeywordsType operationType, PositionPtr pos);
 
 		void GetNext();
 		TokenKeywords* GetKeywordToken();
@@ -43,7 +45,6 @@ class Syntax {
 		void defineBlock();
 		void stringConst();
 		void similarVarSection();
-		void type();
 		void typeDefine();
 		ITableTypeElementPtr typeDeclaration();
 		ITableTypeElementPtr simpleTypeDeclaration();
@@ -66,9 +67,9 @@ class Syntax {
 		void whileBlock();
 		ITableTypeElementPtr var();
 		ITableTypeElementPtr indexedVar();
-		ITableTypeElementPtr simpleVar();
+		void complexOpBlock();
 
-		bool boolOpStart();
+		bool relOpStart();
 		bool additiveOpStart();
 		bool signStart();
 		bool multiplicativeOpStart();
