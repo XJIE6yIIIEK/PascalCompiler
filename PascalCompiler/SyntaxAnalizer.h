@@ -8,6 +8,7 @@
 class Syntax {
 	private:
 		std::unique_ptr<Tokenizer> tokenizer;
+		ErrorHandlerPtr errorHandler;
 		std::unique_ptr<Token> curToken;
 
 		std::stack<TableIdentPtr> tableStack;
@@ -17,18 +18,21 @@ class Syntax {
 		ITableTypeElementPtr GetTypeFromFictiveView(std::string ident, UsageEnum allowedUsage);
 		ITableTypeElementPtr GetTypeFromCurrentView(std::string ident, UsageEnum allowedUsage);
 		ITableTypeElementPtr GetTypeFromCurrentView(std::string ident, UsageEnumVector& allowedUsage);
+		TableIdentElementPtr GetRecordFromCurrentView(std::string ident, UsageEnumVector& allowedUsage);
+		TableIdentElementPtr GetRecordFromCurrentView(std::string ident, UsageEnum allowedUsage);
 		std::string GetIdentOfCurrentToken();
 
 		bool Accept(KeywordsType kwType, bool next, bool throwErr);
 		bool Accept(TokenTypeEnum tokenType, bool next, bool throwErr);
 		bool Accept(TokenConstType constType, bool next, bool throwErr);
-		ITableTypeElementPtr AcceptTypes(ITableTypeElementPtr type1, ITableTypeElementPtr type2, bool strict);
+		ITableTypeElementPtr AcceptTypes(ITableTypeElementPtr type1, ITableTypeElementPtr type2, bool strict, bool assingment);
 		ITableTypeElementPtr AcceptOperation(ITableTypeElementPtr type1, ITableTypeElementPtr type2, KeywordsType operationType, PositionPtr pos);
 		ITableTypeElementPtr AcceptUnarOperation(ITableTypeElementPtr type1, KeywordsType operationType, PositionPtr pos);
 
 		void GetNext();
 		TokenKeywords* GetKeywordToken();
 		TokenConst* GetConstToken();
+		void SkipTo(std::vector<KeywordsType>& kws, bool skipSemicolon);
 
 		template<typename ConstType>
 		TokenTypeConst<ConstType>* GetTypeConstToken(TokenConst* tokenConst);
@@ -78,7 +82,7 @@ class Syntax {
 		bool stringQuote();
 
 	public:
-		Syntax(std::unique_ptr<Tokenizer> tokenizer);
+		Syntax(std::unique_ptr<Tokenizer> tokenizer, ErrorHandlerPtr errorHandler);
 		~Syntax();
 
 		void Compile();

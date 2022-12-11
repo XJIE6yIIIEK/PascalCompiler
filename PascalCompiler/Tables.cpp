@@ -48,6 +48,26 @@ ITableTypeElementPtr TableIdent::GetType(std::string ident, UsageEnumVector& all
 	}
 }
 
+TableIdentElementPtr TableIdent::GetRecord(std::string ident, UsageEnumVector& allowedUsage, Position* pos) {
+	if (table.contains(ident) && std::find(allowedUsage.begin(), allowedUsage.end(), table[ident]->usage) != allowedUsage.end()) {
+		return table[ident];
+	} else if (outerView == nullptr) {
+		throw UndefinedIdentifier::CreateException(ident, pos);
+	} else {
+		return outerView->GetRecord(ident, allowedUsage, pos);
+	}
+}
+
+TableIdentElementPtr TableIdent::GetRecord(std::string ident, UsageEnum allowedUsage, Position* pos) {
+	if (table.contains(ident) && table[ident]->usage == allowedUsage) {
+		return table[ident];
+	} else if (outerView == nullptr) {
+		throw UndefinedIdentifier::CreateException(ident, pos);
+	} else {
+		return outerView->GetRecord(ident, allowedUsage, pos);
+	}
+}
+
 bool TableIdent::InView(std::string ident, UsageEnum allowedUsage) {
 	if (table.contains(ident) && table[ident]->usage == allowedUsage) {
 		return true;

@@ -44,6 +44,22 @@ void IO::SkipSpaces() {
 	}
 }
 
+void IO::SkipToNextSymbols() {
+	char currentChar = currentLine[currentPosition.col];
+
+	while (!eof && !isspace(currentChar)) {
+		currentPosition.col++;
+
+		if (CheckEOL()) {
+			eof = GetNextLine();
+		}
+
+		currentChar = currentLine[currentPosition.col];
+	}
+
+	IO::SkipSpaces();
+}
+
 LexemPtr IO::GetNextLexem() {
 	if (eof) {
 		return nullptr;
@@ -68,6 +84,7 @@ LexemPtr IO::GetNextLexem() {
 		if (fsm.currentState->type > LexemType::Null) {
 			type = fsm.currentState->type;
 		} else if ((int)(curState) < -1) {
+			SkipToNextSymbols();
 			fsm.ThrowError(std::move(startPosition));
 		}
 

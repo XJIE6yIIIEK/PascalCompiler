@@ -1,13 +1,6 @@
-program bingo;
+program grinder;
 var
-	num, i, maxPow : integer;
+	a : char;
 begin
-	num := 2;
-	i := 0;
-	maxPow := 17;
-	
-	while (not (i < maxPow)) and (true == false) do
-	begin
-		num := num * num;
-	end;
+	a := 'aztec' * 'gone';
 end.

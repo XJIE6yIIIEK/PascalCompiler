@@ -32,6 +32,7 @@ class IO {
 		bool eof;
 
 		void SkipSpaces();
+		void SkipToNextSymbols();
 		bool CheckEOL();
 
 	public:

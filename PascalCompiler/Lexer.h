@@ -5,6 +5,7 @@
 #include "Keywords.h"
 #include "Position.h"
 #include "IO.h"
+#include "ErrorHandler.h"
 
 class Token;
 
@@ -91,9 +92,10 @@ class TokenTypeConst : public TokenConst {
 class Tokenizer {
 	private:
 		IOPtr io;
+		ErrorHandlerPtr errorHandler;
 
 	public:
-		Tokenizer(IOPtr io);
+		Tokenizer(IOPtr io, ErrorHandlerPtr errorHandler);
 		~Tokenizer();
 
 		TokenPtr GetNextToken();

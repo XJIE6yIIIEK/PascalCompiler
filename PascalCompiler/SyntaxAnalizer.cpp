@@ -2,7 +2,7 @@
 #include "CustomExceptions.h"
 #include "Keywords.h"
 
-Syntax::Syntax(std::unique_ptr<Tokenizer> tokenizer) : tokenizer(std::move(tokenizer)) { }
+Syntax::Syntax(std::unique_ptr<Tokenizer> tokenizer, ErrorHandlerPtr errorHandler) : tokenizer(std::move(tokenizer)), errorHandler(errorHandler) {}
 
 Syntax::~Syntax() { }
 
@@ -80,6 +80,16 @@ void Syntax::Compile() {
 
 void Syntax::GetNext() {
 	curToken = tokenizer->GetNextToken();
+}
+
+void Syntax::SkipTo(std::vector<KeywordsType>& kws, bool skipSemicolon = true) {
+	while (!(curToken->type == TokenTypeEnum::Keyword && std::find(kws.begin(), kws.end(), GetKeywordToken()->kwType) != kws.end())) {
+		GetNext();
+	}
+
+	if (skipSemicolon && curToken != nullptr && Accept(KeywordsType::Semicolon, false, false)) {
+		GetNext();
+	}
 }
 
 TokenKeywords* Syntax::GetKeywordToken() {
@@ -176,12 +186,12 @@ bool Syntax::Accept(TokenConstType constType, bool next = true, bool throwErr = 
 	}
 }
 
-ITableTypeElementPtr Syntax::AcceptTypes(ITableTypeElementPtr type1, ITableTypeElementPtr type2, bool strict = false) {
+ITableTypeElementPtr Syntax::AcceptTypes(ITableTypeElementPtr type1, ITableTypeElementPtr type2, bool strict = false, bool assingment = false) {
 	if (type1 == type2) {
 		return type1;
-	} else if (type1->CheckCast(type2) && !strict) {
+	} else if (!assingment && !strict && type1->CheckCast(type2)) {
 		return type2;
-	} else if (type2->CheckCast(type1) && !strict) {
+	} else if (!strict && type2->CheckCast(type1)) {
 		return type1;
 	} else {
 		throw UnexpectedType::CreateException(type1->typeName, type2->typeName, curToken->pos.get());
@@ -232,6 +242,14 @@ ITableTypeElementPtr Syntax::GetTypeFromCurrentView(std::string ident, UsageEnum
 	return tableStack.top()->GetType(ident, allowedUsage, curToken->pos.get());
 }
 
+TableIdentElementPtr Syntax::GetRecordFromCurrentView(std::string ident, UsageEnumVector& allowedUsage) {
+	return tableStack.top()->GetRecord(ident, allowedUsage, curToken->pos.get());
+}
+
+TableIdentElementPtr Syntax::GetRecordFromCurrentView(std::string ident, UsageEnum allowedUsage) {
+	return tableStack.top()->GetRecord(ident, allowedUsage, curToken->pos.get());
+}
+
 std::string Syntax::GetIdentOfCurrentToken() {
 	TokenIdent* ident = dynamic_cast<TokenIdent*>(curToken.get());
 	return ident->id;
@@ -270,8 +288,18 @@ void Syntax::constBlock() {
 	GetNext();
 
 	do {
-		constDeclaration();
-		Accept(KeywordsType::Semicolon);
+		try {
+			constDeclaration();
+			Accept(KeywordsType::Semicolon);
+		} catch (CustomException& e) {
+			errorHandler->PrintErrorMessage(e.what());
+			std::vector<KeywordsType> kws = {
+				KeywordsType::Semicolon, KeywordsType::Var,
+				KeywordsType::Type, KeywordsType::Begin,
+				KeywordsType::Dot
+			};
+			SkipTo(kws);
+		}
 	} while (Accept(TokenTypeEnum::Ident, false, false));
 }
 
@@ -342,8 +370,17 @@ void Syntax::varBlock() {
 	GetNext();
 
 	do {
-		similarVarSection();
-		Accept(KeywordsType::Semicolon);
+		try {
+			similarVarSection();
+		 	Accept(KeywordsType::Semicolon);
+		} catch (CustomException& e) {
+			errorHandler->PrintErrorMessage(e.what());
+			std::vector<KeywordsType> kws = {
+				KeywordsType::Semicolon, KeywordsType::Type,
+				KeywordsType::Begin, KeywordsType::Dot
+			};
+			SkipTo(kws);
+		}
 	} while (Accept(TokenTypeEnum::Ident, false, false));
 }
 
@@ -379,8 +416,17 @@ void Syntax::typeBlock() {
 	GetNext();
 
 	do {
-		typeDefine();
-		Accept(KeywordsType::Semicolon);
+		try {
+			typeDefine();
+			Accept(KeywordsType::Semicolon);
+		} catch (CustomException& e) {
+			errorHandler->PrintErrorMessage(e.what());
+			std::vector<KeywordsType> kws = {
+				KeywordsType::Semicolon, KeywordsType::Begin,
+				KeywordsType::Dot
+			};
+			SkipTo(kws);
+		}
 	} while (Accept(TokenTypeEnum::Ident, false, false));
 }
 
@@ -609,17 +655,26 @@ void Syntax::unmarkedOperator() {
 	} else if (complexOperatorStart()) {
 		complexOperator();
 	}
-	
 }
 
 void Syntax::simpleOperator() {
-	assingmentOperator();
+	try{
+		assingmentOperator();
+	} catch (CustomException& e) {
+		errorHandler->PrintErrorMessage(e.what());
+		std::vector<KeywordsType> kws = {
+			KeywordsType::Semicolon, KeywordsType::End,
+			KeywordsType::Dot
+		};
+		SkipTo(kws, false);
+	}
 }
 
 void Syntax::assingmentOperator() {
 	Accept(TokenTypeEnum::Ident, false, true);
 
-	ITableTypeElementPtr identType = GetTypeFromCurrentView(GetIdentOfCurrentToken(), UsageEnum::Var);
+	TableIdentElementPtr record = GetRecordFromCurrentView(GetIdentOfCurrentToken(), UsageEnum::Var);
+	ITableTypeElementPtr identType = record->type;
 
 	GetNext();
 
@@ -627,7 +682,12 @@ void Syntax::assingmentOperator() {
 
 	ITableTypeElementPtr operType = expression();
 
-	AcceptTypes(identType, operType);
+	try {
+		AcceptTypes(identType, operType, false, true);
+	} catch (UnexpectedType& e) {
+		errorHandler->PrintErrorMessage(e.what());
+		record->type = operType;
+	}
 }
 
 ITableTypeElementPtr Syntax::expression() {
@@ -781,7 +841,16 @@ ITableTypeElementPtr Syntax::indexedVar() {
 
 void Syntax::complexOperator() {
 	if (Accept(KeywordsType::Begin, false, false)) {
-		compositeOperator();
+		try {
+			compositeOperator();
+		} catch (CustomException& e) {
+			errorHandler->PrintErrorMessage(e.what());
+			std::vector<KeywordsType> kws = {
+				KeywordsType::End, KeywordsType::Semicolon, 
+				KeywordsType::Dot
+			};
+			SkipTo(kws, false);
+		}
 	} else if (Accept(KeywordsType::If, false, false)) {
 		ifBlock();
 	} else if (Accept(KeywordsType::While, false, false)) {
@@ -800,32 +869,66 @@ void Syntax::complexOpBlock() {
 void Syntax::ifBlock() {
 	Accept(KeywordsType::If);
 
-	ITableTypeElementPtr exprType = expression();
-	AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));	
-
-	Accept(KeywordsType::Then);
-	complexOpBlock();
-
-	if (Accept(KeywordsType::Else, false, false)) {
-		GetNext();
-
-		complexOpBlock();
+	try {
+		ITableTypeElementPtr exprType = expression();
+		AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));
+	} catch (CustomException& e) {
+		errorHandler->PrintErrorMessage(e.what());
+		std::vector<KeywordsType> kws = {
+			KeywordsType::Then, KeywordsType::Semicolon,
+			KeywordsType::Dot
+		};
+		SkipTo(kws, false);
 	}
 
-	Accept(KeywordsType::Semicolon);
+	try {
+		Accept(KeywordsType::Then);
+		complexOpBlock();
+
+		if (Accept(KeywordsType::Else, false, false)) {
+			GetNext();
+
+			complexOpBlock();
+		}
+
+		//Accept(KeywordsType::Semicolon);
+	} catch (CustomException& e) {
+		errorHandler->PrintErrorMessage(e.what());
+		std::vector<KeywordsType> kws = {
+			KeywordsType::Semicolon, KeywordsType::Dot
+		};
+		SkipTo(kws, false);
+	}
 }
 
 void Syntax::whileBlock() {
 	Accept(KeywordsType::While);
 	
-	ITableTypeElementPtr exprType = expression();
-	AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));
+	try {
+		ITableTypeElementPtr exprType = expression();
+		AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));
+	} catch (CustomException& e) {
+		errorHandler->PrintErrorMessage(e.what());
+		std::vector<KeywordsType> kws = {
+			KeywordsType::Do, KeywordsType::Semicolon,
+			KeywordsType::Dot
+		};
+		SkipTo(kws, false);
+	}
 
-	Accept(KeywordsType::Do);
+	try{
+		Accept(KeywordsType::Do);
 
-	complexOpBlock();
+		complexOpBlock();
 
-	Accept(KeywordsType::Semicolon);
+		//Accept(KeywordsType::Semicolon);
+	} catch (CustomException& e) {
+		errorHandler->PrintErrorMessage(e.what());
+		std::vector<KeywordsType> kws = {
+			KeywordsType::Semicolon, KeywordsType::Dot
+		};
+		SkipTo(kws, false);
+	}
 }
 
 bool Syntax::relOpStart() {

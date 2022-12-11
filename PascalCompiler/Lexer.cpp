@@ -1,6 +1,7 @@
 #include "Lexer.h"
+#include "CustomExceptions.h"
 
-Tokenizer::Tokenizer(IOPtr io) : io(std::move(io)) {}
+Tokenizer::Tokenizer(IOPtr io, ErrorHandlerPtr errorHandler) : io(std::move(io)), errorHandler(errorHandler) {}
 
 Tokenizer::~Tokenizer() {}
 
@@ -51,10 +52,18 @@ std::string TokenTypeConst<std::string>::to_string() {
 }
 
 TokenPtr Tokenizer::GetNextToken() {
-	LexemPtr lexem = io->GetNextLexem();
+	LexemPtr lexem = nullptr;
 
-	if (lexem == nullptr) {
-		return nullptr;
+	while (lexem == nullptr) {
+		try {
+			lexem = io->GetNextLexem();
+
+			if (lexem == nullptr) {
+				return nullptr;
+			}
+		} catch (CustomException& e) {
+			errorHandler->PrintErrorMessage(e.what());
+		}
 	}
 
 	while (lexem->type == LexemType::Commentary) {

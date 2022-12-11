@@ -69,6 +69,8 @@ class TableIdent {
 		TableIdentElementPtr Add(std::string ident, UsageEnum usage, ITableTypeElementPtr type = nullptr);
 		ITableTypeElementPtr GetType(std::string ident, UsageEnum allowedUsage, Position* pos);
 		ITableTypeElementPtr GetType(std::string ident, UsageEnumVector& allowedUsage, Position* pos);
+		TableIdentElementPtr GetRecord(std::string ident, UsageEnumVector& allowedUsage, Position* pos);
+		TableIdentElementPtr GetRecord(std::string ident, UsageEnum allowedUsage, Position* pos);
 		bool InView(std::string ident, UsageEnum allowedUsage);
 		bool InView(std::string ident, UsageEnumVector& allowedUsage);
 };
