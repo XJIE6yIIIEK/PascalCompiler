@@ -83,7 +83,6 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	TupleVectorPtr state_Start_0 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple(';', ';'),
 		std::make_tuple(',', ','),
-		std::make_tuple('^', '^'),
 		std::make_tuple('[', '['),
 		std::make_tuple(']', ']'),
 		std::make_tuple('{', '{'),

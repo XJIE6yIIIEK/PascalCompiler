@@ -46,8 +46,13 @@ void IO::SkipSpaces() {
 
 void IO::SkipToNextSymbols() {
 	char currentChar = currentLine[currentPosition.col];
+	std::vector<char> specSym = { 
+		'\'', '<', ':', '=', '>', ';',
+		',', '[', ']', '(', ')', '{',
+		'}', '+', '-', '/', '*'
+	};
 
-	while (!eof && !isspace(currentChar)) {
+	while (!eof && !(isspace(currentChar) || std::find(specSym.begin(), specSym.end(), currentChar) != specSym.end())) {
 		currentPosition.col++;
 
 		if (CheckEOL()) {
