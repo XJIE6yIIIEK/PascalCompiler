@@ -86,6 +86,8 @@ class TokenTypeConst : public TokenConst {
 		TokenTypeConst(TokenTypeEnum type, PositionPtr pos, TokenConstType constType, ConstType val);
 		~TokenTypeConst();
 
+		static ConstType GetTokenValue(Token* token);
+
 		virtual std::string to_string();
 };
 

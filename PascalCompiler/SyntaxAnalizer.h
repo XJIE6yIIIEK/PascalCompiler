@@ -1,12 +1,18 @@
 #pragma once
 #include <memory>
 #include <stack>
+#include <tuple>
 #include "Lexer.h"
 #include "Keywords.h"
 #include "Tables.h"
+#include "Generator.h"
+
+using TTTuple = std::tuple<ITableTypeElementPtr, llvm::Value*>;
+using TTTuplePtr = std::unique_ptr<TTTuple>;
 
 class Syntax {
 	private:
+		std::unique_ptr<CodeGenerator> codegen;
 		std::unique_ptr<Tokenizer> tokenizer;
 		ErrorHandlerPtr errorHandler;
 		std::unique_ptr<Token> curToken;
@@ -41,13 +47,13 @@ class Syntax {
 		void block();
 		void constBlock();
 		void constDeclaration();
-		ITableTypeElementPtr constant();
+		TTTuple constant();
 		ITableTypeElementPtr constantValue();
 		void varBlock();
 		void opBlock();
 		void typeBlock();
 		void defineBlock();
-		void stringConst();
+		TTTuple stringConst();
 		void similarVarSection();
 		void typeDefine();
 		ITableTypeElementPtr typeDeclaration();
@@ -82,7 +88,7 @@ class Syntax {
 		bool stringQuote();
 
 	public:
-		Syntax(std::unique_ptr<Tokenizer> tokenizer, ErrorHandlerPtr errorHandler);
+		Syntax(std::unique_ptr<Tokenizer> tokenizer, ErrorHandlerPtr errorHandler, std::unique_ptr<CodeGenerator> codegen);
 		~Syntax();
 
 		void Compile();

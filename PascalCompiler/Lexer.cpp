@@ -35,6 +35,12 @@ TokenTypeConst<ConstType>::TokenTypeConst(TokenTypeEnum type, PositionPtr pos, T
 template<typename ConstType>
 TokenTypeConst<ConstType>::~TokenTypeConst() {}
 
+template<typename ConstType>
+ConstType TokenTypeConst<ConstType>::GetTokenValue(Token* token) {
+	TokenTypeConst<ConstType>* castedToken = dynamic_cast<TokenTypeConst<ConstType>*>(token);
+	return castedToken->val;
+}
+
 std::string TokenTypeConst<int>::to_string() {
 	return "INT " + std::to_string(val) + " at " + pos->to_string();
 }

@@ -2,7 +2,8 @@
 #include "CustomExceptions.h"
 #include "Keywords.h"
 
-Syntax::Syntax(std::unique_ptr<Tokenizer> tokenizer, ErrorHandlerPtr errorHandler) : tokenizer(std::move(tokenizer)), errorHandler(errorHandler) {}
+Syntax::Syntax(std::unique_ptr<Tokenizer> tokenizer, ErrorHandlerPtr errorHandler, std::unique_ptr<CodeGenerator> codegen) : 
+	tokenizer(std::move(tokenizer)), errorHandler(errorHandler), codegen(std::move(codegen)) { }
 
 Syntax::~Syntax() { }
 
@@ -305,12 +306,31 @@ void Syntax::constBlock() {
 
 void Syntax::constDeclaration() {
 	Accept(TokenTypeEnum::Ident, false, true);
-	TableIdentElementPtr element = tableStack.top()->Add(GetIdentOfCurrentToken(), UsageEnum::Const, nullptr);
+	std::string ident = GetIdentOfCurrentToken();
+	TableIdentElementPtr element = tableStack.top()->Add(ident, UsageEnum::Const, nullptr);
 
 	GetNext();
 
 	Accept(KeywordsType::Equal);
-	element->type = constant();
+	auto [type, IRVal] = constant();
+
+	//Add type to constant's table ident row
+	element->type = type;
+
+	//A lot of boilerplate stuff for LLVM. 
+	llvm::Function* func = (*(codegen->builder)).GetInsertBlock()->getParent();
+	llvm::AllocaInst* Alloca;
+	if (type == GetTypeFromFictiveView("char", UsageEnum::Type)) {
+		Alloca = codegen->CreateEntryBlockAlloca<std::string>(func, ident);
+	} else if (type == GetTypeFromFictiveView("integer", UsageEnum::Type)) {
+		Alloca = codegen->CreateEntryBlockAlloca<int>(func, ident);
+	} else if (type == GetTypeFromFictiveView("float", UsageEnum::Type)) {
+		Alloca = codegen->CreateEntryBlockAlloca<double>(func, ident);
+	} else {
+		Alloca = codegen->CreateEntryBlockAlloca<bool>(func, ident);
+	}
+
+	(*(codegen->builder)).CreateStore(IRVal, Alloca);
 }
 
 ITableTypeElementPtr Syntax::constantValue() {
@@ -324,11 +344,6 @@ ITableTypeElementPtr Syntax::constantValue() {
 		type = GetTypeFromFictiveView("integer", UsageEnum::Type);
 	} else if (Accept(TokenConstType::Bool, false, false)) {
 		type = GetTypeFromFictiveView("boolean", UsageEnum::Type);
-	} else if (stringQuote()) {
-		type = GetTypeFromFictiveView("char", UsageEnum::Type);
-		GetNext();
-		Accept(TokenConstType::String);
-		Accept(KeywordsType::Quote, false, true);
 	} else if (Accept(TokenTypeEnum::Ident, false, false)) {
 		type = GetTypeFromCurrentView(GetIdentOfCurrentToken(), UsageEnum::Const);
 	} else {
@@ -340,11 +355,9 @@ ITableTypeElementPtr Syntax::constantValue() {
 	return type;
 }
 
-ITableTypeElementPtr Syntax::constant() {
+TTTuple Syntax::constant() {
 	if (Accept(KeywordsType::Quote, false, false)) {
-		stringConst();
-
-		return GetTypeFromFictiveView("char", UsageEnum::Type);
+		return stringConst();
 	}
 
 	if (signStart()) {
@@ -356,10 +369,22 @@ ITableTypeElementPtr Syntax::constant() {
 	return constantValue();
 }
 
-void Syntax::stringConst() {
+TTTuple Syntax::stringConst() {
 	Accept(KeywordsType::Quote);
-	Accept(TokenConstType::String);
+	Accept(TokenConstType::String, false, true);
+	
+	//Getting string value
+	std::string val = TokenTypeConst<std::string>::GetTokenValue(curToken.get());
+
 	Accept(KeywordsType::Quote);
+
+	//Get LLVM value pointer and type reference in table ident
+	llvm::Value* IRVal = codegen->StringConstant(val);
+	ITableTypeElementPtr type = GetTypeFromFictiveView("char", UsageEnum::Type);
+
+	TTTuple tuple(type, IRVal);
+
+	return tuple;
 }
 
 void Syntax::varBlock() {
