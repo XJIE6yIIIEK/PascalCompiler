@@ -12,7 +12,7 @@ IO::~IO() {
 }
 
 bool IO::CheckEOL() {
-	return currentPosition.col == currentLine.size();
+	return currentPosition.col >= currentLine.size();
 }
 
 bool IO::GetNextLine() {
@@ -57,6 +57,10 @@ void IO::SkipToNextSymbols() {
 
 		if (CheckEOL()) {
 			eof = GetNextLine();
+
+			if (eof) {
+				return;
+			}
 		}
 
 		currentChar = currentLine[currentPosition.col];

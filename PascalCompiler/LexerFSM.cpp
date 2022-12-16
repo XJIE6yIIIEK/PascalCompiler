@@ -149,6 +149,7 @@ LexerFSM::LexerFSM() : startState(std::make_shared<StateNode>(StateType::Start))
 	TupleVectorPtr state_4_4 = std::make_unique<TupleVector>(TupleVector({
 		std::make_tuple('a', 'z'),
 		std::make_tuple('A', 'Z'),
+		std::make_tuple('0', '9'),
 		std::make_tuple('_', '_')
 	}));
 	AddTransition(state4, state4, std::move(state_4_4));

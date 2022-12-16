@@ -26,8 +26,8 @@ class Syntax {
 		bool Accept(TokenTypeEnum tokenType, bool next, bool throwErr);
 		bool Accept(TokenConstType constType, bool next, bool throwErr);
 		ITableTypeElementPtr AcceptTypes(ITableTypeElementPtr type1, ITableTypeElementPtr type2, bool strict, bool assingment);
-		ITableTypeElementPtr AcceptOperation(ITableTypeElementPtr type1, ITableTypeElementPtr type2, KeywordsType operationType, PositionPtr pos);
-		ITableTypeElementPtr AcceptUnarOperation(ITableTypeElementPtr type1, KeywordsType operationType, PositionPtr pos);
+		ITableTypeElementPtr AcceptOperation(ITableTypeElementPtr type1, ITableTypeElementPtr type2, KeywordsType operationType, Position* pos);
+		ITableTypeElementPtr AcceptUnarOperation(ITableTypeElementPtr type1, KeywordsType operationType, Position* pos);
 
 		void GetNext();
 		TokenKeywords* GetKeywordToken();

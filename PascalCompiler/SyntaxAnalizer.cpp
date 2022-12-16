@@ -198,8 +198,8 @@ ITableTypeElementPtr Syntax::AcceptTypes(ITableTypeElementPtr type1, ITableTypeE
 	}
 }
 
-ITableTypeElementPtr Syntax::AcceptOperation(ITableTypeElementPtr type1, ITableTypeElementPtr type2, KeywordsType operationType, PositionPtr pos) {
-	ITableTypeElementPtr opType = AcceptTypes(type1, type2);
+ITableTypeElementPtr Syntax::AcceptOperation(ITableTypeElementPtr type1, ITableTypeElementPtr type2, KeywordsType operationType, Position* pos) {
+	ITableTypeElementPtr opType = AcceptTypes(type1, type2, true, false);
 
 	if (opType->CheckOperation(operationType)) {
 		if (operationType >= KeywordsType::Plus) {
@@ -208,11 +208,11 @@ ITableTypeElementPtr Syntax::AcceptOperation(ITableTypeElementPtr type1, ITableT
 			return GetTypeFromFictiveView("boolean", UsageEnum::Type);
 		}
 	} else {
-		throw UnknownOperation::CreateException(opType->typeName, enumToKeywords.find(operationType)->second, pos.get());
+		throw UnknownOperation::CreateException(opType->typeName, enumToKeywords.find(operationType)->second, pos);
 	}
 }
 
-ITableTypeElementPtr Syntax::AcceptUnarOperation(ITableTypeElementPtr type1, KeywordsType operationType, PositionPtr pos) {
+ITableTypeElementPtr Syntax::AcceptUnarOperation(ITableTypeElementPtr type1, KeywordsType operationType, Position* pos) {
 	if (type1->CheckOperation(operationType)) {
 		if (operationType == KeywordsType::Plus || operationType == KeywordsType::Minus) {
 			return type1;
@@ -220,7 +220,7 @@ ITableTypeElementPtr Syntax::AcceptUnarOperation(ITableTypeElementPtr type1, Key
 			return GetTypeFromFictiveView("boolean", UsageEnum::Type);
 		}
 	} else {
-		throw UnknownOperation::CreateException(type1->typeName, enumToKeywords.find(operationType)->second, pos.get());
+		throw UnknownOperation::CreateException(type1->typeName, enumToKeywords.find(operationType)->second, pos);
 	}
 }
 
@@ -535,7 +535,7 @@ ITableTypeElementPtr Syntax::intervalType() {
 		throw SyntaxError::CreateException("<enum identifier> or constant", curToken->pos.get());
 	}
 
-	AcceptTypes(startIntervalTT, endIntervalTT);
+	AcceptTypes(baseType, endIntervalTT);
 
 	if (Accept(TokenTypeEnum::Ident, false, false)) {
 		IntervalTableType<std::string>::AddMax(startIntervalTT, GetIdentOfCurrentToken());
@@ -674,9 +674,9 @@ void Syntax::assingmentOperator() {
 	Accept(TokenTypeEnum::Ident, false, true);
 
 	TableIdentElementPtr record = GetRecordFromCurrentView(GetIdentOfCurrentToken(), UsageEnum::Var);
-	ITableTypeElementPtr identType = record->type;
+	ITableTypeElementPtr identType = var();
 
-	GetNext();
+	//GetNext();
 
 	Accept(KeywordsType::Define);
 
@@ -708,7 +708,7 @@ ITableTypeElementPtr Syntax::expression() {
 	}
 
 	if (rValue != nullptr) {
-		return AcceptOperation(lValue, rValue, op, std::move(pos));
+		return AcceptOperation(lValue, rValue, op, pos.get());
 	} else {
 		return lValue;
 	}
@@ -733,10 +733,11 @@ ITableTypeElementPtr Syntax::simpleExpression() {
 		GetNext();
 
 		rValue = term();
+		lValue = AcceptOperation(lValue, rValue, op, pos.get());
 	}
 
 	if (rValue != nullptr) {
-		return AcceptOperation(lValue, rValue, op, std::move(pos));
+		return AcceptOperation(lValue, rValue, op, pos.get());
 	} else {
 		return lValue;
 	}
@@ -757,10 +758,11 @@ ITableTypeElementPtr Syntax::term() {
 		GetNext();
 
 		rValue = factor();
+		lValue = AcceptOperation(lValue, rValue, op, pos.get());
 	}
 
 	if (rValue != nullptr) {
-		return AcceptOperation(lValue, rValue, op, std::move(pos));
+		return AcceptOperation(lValue, rValue, op, pos.get());
 	} else {
 		return lValue;
 	}
@@ -786,7 +788,7 @@ ITableTypeElementPtr Syntax::factor() {
 		GetNext();
 
 		type = factor();
-		type = AcceptUnarOperation(type, op, std::move(pos));
+		type = AcceptUnarOperation(type, op, pos.get());
 	} else {
 		throw SyntaxError::CreateException("<var identifier>, (, not, constant", curToken->pos.get());
 	}
@@ -798,11 +800,10 @@ ITableTypeElementPtr Syntax::var() {
 	std::vector<UsageEnum> allowedUsage = { UsageEnum::Var, UsageEnum::Const };
 	ITableTypeElementPtr varType = GetTypeFromCurrentView(GetIdentOfCurrentToken(), allowedUsage);
 
-	GetNext();
-
 	if (varType->type == IdentTypeEnum::Array) {
 		return indexedVar();
 	} else {
+		GetNext();
 		return varType;
 	}
 }
@@ -810,6 +811,8 @@ ITableTypeElementPtr Syntax::var() {
 ITableTypeElementPtr Syntax::indexedVar() {
 	ITableTypeElementPtr varType = GetTypeFromCurrentView(GetIdentOfCurrentToken(), UsageEnum::Var);
 	ITableTypeElementPtr arrayElementType = varType;
+
+	GetNext();
 
 	while (Accept(KeywordsType::OpenSquare, false, false)) {
 		ArrayPtr arr = std::dynamic_pointer_cast<ArrayTableType>(arrayElementType);
@@ -871,7 +874,7 @@ void Syntax::ifBlock() {
 
 	try {
 		ITableTypeElementPtr exprType = expression();
-		AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));
+		AcceptTypes(GetTypeFromFictiveView("boolean", UsageEnum::Type), exprType, true, false);
 	} catch (CustomException& e) {
 		errorHandler->PrintErrorMessage(e.what());
 		std::vector<KeywordsType> kws = {
@@ -906,7 +909,7 @@ void Syntax::whileBlock() {
 	
 	try {
 		ITableTypeElementPtr exprType = expression();
-		AcceptTypes(exprType, GetTypeFromFictiveView("boolean", UsageEnum::Type));
+		AcceptTypes(GetTypeFromFictiveView("boolean", UsageEnum::Type), exprType, true, false);
 	} catch (CustomException& e) {
 		errorHandler->PrintErrorMessage(e.what());
 		std::vector<KeywordsType> kws = {
